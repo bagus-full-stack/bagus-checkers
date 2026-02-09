@@ -4,4 +4,7 @@ export * from './move.model';
 export * from './game-state.model';
 export * from './game-variant.model';
 export * from './online.model';
-
+export * from './timer.model';
+export * from './preferences.model';
+export * from './replay.model';
+export * from './ranking.model';

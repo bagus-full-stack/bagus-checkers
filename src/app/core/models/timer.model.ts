@@ -20,19 +20,19 @@ export const TIME_MODES: Record<TimeMode, TimeModeConfig> = {
   blitz: {
     id: 'blitz',
     name: 'Blitz',
-    initialTimeSeconds: 3 * 60, // 3 minutes
+    initialTimeSeconds: 3 * 60,
     incrementSeconds: 0,
   },
   rapid: {
     id: 'rapid',
     name: 'Rapide',
-    initialTimeSeconds: 10 * 60, // 10 minutes
+    initialTimeSeconds: 10 * 60,
     incrementSeconds: 5,
   },
   classic: {
     id: 'classic',
     name: 'Classique',
-    initialTimeSeconds: 30 * 60, // 30 minutes
+    initialTimeSeconds: 30 * 60,
     incrementSeconds: 10,
   },
   unlimited: {
@@ -83,11 +83,9 @@ export function createTimerState(mode: TimeMode): TimerState {
  */
 export function formatTime(ms: number): string {
   if (ms <= 0) return '00:00';
-
   const totalSeconds = Math.ceil(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 

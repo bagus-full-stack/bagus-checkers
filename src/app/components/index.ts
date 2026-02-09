@@ -3,4 +3,8 @@ export * from './square/square.component';
 export * from './board/board.component';
 export * from './move-history/move-history.component';
 export * from './game-info/game-info.component';
-
+export * from './game-timer/game-timer.component';
+export * from './material-graph/material-graph.component';
+export * from './game-over-modal/game-over-modal.component';
+export * from './replay-controls/replay-controls.component';
+export * from './player-card/player-card.component';

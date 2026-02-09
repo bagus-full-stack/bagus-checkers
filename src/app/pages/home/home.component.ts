@@ -54,6 +54,21 @@ import { RouterLink } from '@angular/router';
         </a>
       </nav>
 
+      <nav class="secondary-menu" aria-label="Menu secondaire">
+        <a routerLink="/profile" class="secondary-btn">
+          <span class="btn-icon" aria-hidden="true">👤</span>
+          <span>Profil</span>
+        </a>
+        <a routerLink="/leaderboard" class="secondary-btn">
+          <span class="btn-icon" aria-hidden="true">🏆</span>
+          <span>Classement</span>
+        </a>
+        <a routerLink="/replays" class="secondary-btn">
+          <span class="btn-icon" aria-hidden="true">📼</span>
+          <span>Replays</span>
+        </a>
+      </nav>
+
       <footer class="footer">
         <p>Dames Internationales (10x10) • Règles officielles</p>
       </footer>
@@ -158,6 +173,41 @@ import { RouterLink } from '@angular/router';
       text-align: center;
       color: #a5b4fc;
       font-size: 0.875rem;
+    }
+
+    .secondary-menu {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .secondary-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 0.5rem;
+      color: #c7d2fe;
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: all 0.2s ease;
+
+      .btn-icon {
+        font-size: 1rem;
+        width: auto;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      &:focus-visible {
+        outline: 2px solid #818cf8;
+        outline-offset: 2px;
+      }
     }
   `,
 })

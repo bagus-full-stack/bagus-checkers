@@ -15,10 +15,13 @@ import {
   movePiece,
   promotePiece,
   shouldPromote,
+  TimeMode,
 } from '../models';
 import { GameVariantService } from './game-variant.service';
 import { MoveValidatorService } from './move-validator.service';
 import { MoveHistoryService } from './move-history.service';
+import { TimerService } from './timer.service';
+import { GameStatsService } from './game-stats.service';
 
 /**
  * Main game engine service - manages game state and logic
@@ -30,8 +33,11 @@ export class GameEngineService {
   private readonly variantService = inject(GameVariantService);
   private readonly moveValidator = inject(MoveValidatorService);
   private readonly historyService = inject(MoveHistoryService);
+  private readonly timerService = inject(TimerService);
+  private readonly statsService = inject(GameStatsService);
 
   private readonly _gameState = signal<GameState | null>(null);
+  private _timeMode: TimeMode = 'unlimited';
 
   /** Current game state (readonly) */
   readonly gameState = this._gameState.asReadonly();
@@ -84,7 +90,8 @@ export class GameEngineService {
   /**
    * Starts a new game
    */
-  startNewGame(): void {
+  startNewGame(timeMode: TimeMode = 'unlimited'): void {
+    this._timeMode = timeMode;
     const pieces = this.createInitialPieces();
     const state = createInitialGameState(pieces);
 
@@ -94,6 +101,15 @@ export class GameEngineService {
 
     this._gameState.set(updatedState);
     this.historyService.initialize(updatedState);
+
+    // Initialize timer and stats
+    this.timerService.initialize(timeMode);
+    this.statsService.initialize(updatedState);
+
+    // Start timer for white
+    if (timeMode !== 'unlimited') {
+      this.timerService.startTimer('white');
+    }
   }
 
   /**
@@ -254,6 +270,18 @@ export class GameEngineService {
     this._gameState.set(newState);
     this.historyService.recordMove(newState, move);
 
+    // Record stats
+    this.statsService.recordMove(newState, move);
+
+    // Switch timer
+    if (this._timeMode !== 'unlimited') {
+      if (gameOver) {
+        this.timerService.pauseTimer();
+      } else {
+        this.timerService.switchPlayer(nextPlayer);
+      }
+    }
+
     return true;
   }
 
@@ -356,6 +384,43 @@ export class GameEngineService {
     if (!state) return false;
 
     return state.validMoves.some((m) => positionsEqual(m.to, position));
+  }
+
+  /**
+   * Handles timeout - called when a player runs out of time
+   */
+  handleTimeout(timedOutPlayer: PlayerColor): void {
+    const state = this._gameState();
+    if (!state || state.status !== 'playing') return;
+
+    const winner: PlayerColor = timedOutPlayer === 'white' ? 'black' : 'white';
+
+    this._gameState.set({
+      ...state,
+      status: 'finished',
+      result: {
+        winner,
+        reason: 'timeout',
+      },
+    });
+
+    this.timerService.pauseTimer();
+  }
+
+  /**
+   * Gets current game statistics
+   */
+  getGameStatistics() {
+    const state = this._gameState();
+    if (!state) return null;
+    return this.statsService.getStatistics(state.moveHistory);
+  }
+
+  /**
+   * Gets material history for graphs
+   */
+  getMaterialHistory() {
+    return this.statsService.materialHistory();
   }
 }
 

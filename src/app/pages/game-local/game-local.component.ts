@@ -3,19 +3,25 @@ import {
   ChangeDetectionStrategy,
   inject,
   OnInit,
+  signal,
+  effect,
+  computed,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { GameEngineService } from '../../core/services';
+import { GameEngineService, TimerService, ReplayService } from '../../core/services';
+import { TimeMode, TIME_MODES } from '../../core/models';
 import {
   BoardComponent,
   MoveHistoryComponent,
   GameInfoComponent,
+  GameTimerComponent,
+  GameOverModalComponent,
 } from '../../components';
 
 @Component({
   selector: 'app-game-local',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, BoardComponent, MoveHistoryComponent, GameInfoComponent],
+  imports: [RouterLink, BoardComponent, MoveHistoryComponent, GameInfoComponent, GameTimerComponent, GameOverModalComponent],
   template: `
     <div class="game-container">
       <header class="game-header">
@@ -24,6 +30,16 @@ import {
         </a>
         <h1 class="game-title">Partie Locale</h1>
         <div class="header-actions">
+          <select
+            class="time-select"
+            [value]="selectedTimeMode()"
+            (change)="onTimeModeChange($event)"
+            aria-label="Mode de temps"
+          >
+            @for (mode of timeModes; track mode.id) {
+              <option [value]="mode.id">{{ mode.name }}</option>
+            }
+          </select>
           <button
             type="button"
             class="action-btn"
@@ -37,6 +53,7 @@ import {
 
       <main class="game-main">
         <aside class="sidebar left-sidebar">
+          <app-game-timer [player]="'black'" />
           <app-game-info />
         </aside>
 
@@ -45,34 +62,20 @@ import {
         </section>
 
         <aside class="sidebar right-sidebar">
+          <app-game-timer [player]="'white'" />
           <app-move-history />
         </aside>
       </main>
 
       @if (isGameOver()) {
-        <div
-          class="game-over-modal"
-          role="dialog"
-          aria-labelledby="game-over-title"
-          aria-modal="true"
-        >
-          <div class="modal-content">
-            <h2 id="game-over-title" class="modal-title">Partie terminée !</h2>
-            @if (gameResult()?.winner !== 'draw') {
-              <p class="winner-text">
-                Les {{ gameResult()?.winner === 'white' ? 'Blancs' : 'Noirs' }} remportent la victoire !
-              </p>
-            } @else {
-              <p class="winner-text">Match nul !</p>
-            }
-            <div class="modal-actions">
-              <button type="button" class="modal-btn primary" (click)="newGame()">
-                Revanche
-              </button>
-              <a routerLink="/" class="modal-btn">Retour à l'accueil</a>
-            </div>
-          </div>
-        </div>
+        <app-game-over-modal
+          [winner]="gameResult()?.winner ?? null"
+          [reason]="gameResult()?.reason"
+          [stats]="gameStats()"
+          (newGame)="newGame()"
+          (saveReplay)="saveReplay()"
+          (close)="closeModal()"
+        />
       }
     </div>
   `,
@@ -140,6 +143,21 @@ import {
 
       &:focus-visible {
         outline: 2px solid white;
+        outline-offset: 2px;
+      }
+    }
+
+    .time-select {
+      padding: 0.5rem 1rem;
+      background: #374151;
+      border: 1px solid #4b5563;
+      border-radius: 0.375rem;
+      color: white;
+      font-size: 0.875rem;
+      cursor: pointer;
+
+      &:focus {
+        outline: 2px solid #4f46e5;
         outline-offset: 2px;
       }
     }
@@ -273,20 +291,70 @@ import {
 })
 export class GameLocalComponent implements OnInit {
   private readonly gameEngine = inject(GameEngineService);
+  private readonly timerService = inject(TimerService);
+  private readonly replayService = inject(ReplayService);
 
   readonly gameResult = this.gameEngine.gameResult;
   readonly status = this.gameEngine.status;
+  readonly selectedTimeMode = signal<TimeMode>('unlimited');
+  readonly showModal = signal(true);
+
+  readonly timeModes = Object.values(TIME_MODES);
+
+  readonly gameStats = computed(() => {
+    if (this.status() !== 'finished') return undefined;
+    return this.gameEngine.getGameStatistics() ?? undefined;
+  });
+
+  constructor() {
+    // Watch for timeout
+    effect(() => {
+      const timedOut = this.timerService.timedOutPlayer();
+      if (timedOut) {
+        this.gameEngine.handleTimeout(timedOut);
+      }
+    });
+  }
 
   ngOnInit(): void {
-    this.gameEngine.startNewGame();
+    this.gameEngine.startNewGame(this.selectedTimeMode());
   }
 
   isGameOver(): boolean {
-    return this.status() === 'finished';
+    return this.status() === 'finished' && this.showModal();
+  }
+
+  onTimeModeChange(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    this.selectedTimeMode.set(target.value as TimeMode);
   }
 
   newGame(): void {
-    this.gameEngine.startNewGame();
+    this.showModal.set(true);
+    this.gameEngine.startNewGame(this.selectedTimeMode());
+  }
+
+  saveReplay(): void {
+    const stats = this.gameStats();
+    const result = this.gameResult();
+    if (!stats) return;
+
+    this.replayService.saveGame(
+      this.gameEngine.gameState()?.moveHistory ?? [],
+      this.gameEngine.getMaterialHistory(),
+      'Joueur 1',
+      'Joueur 2',
+      result?.winner ?? null,
+      result?.reason ?? '',
+      'Dames Internationales',
+      stats.duration
+    );
+
+    alert('Partie sauvegardée !');
+  }
+
+  closeModal(): void {
+    this.showModal.set(false);
   }
 }
 
