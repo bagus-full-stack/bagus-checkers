@@ -1,59 +1,120 @@
-# Checkers
+# Angular Checkers Master 🎮
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.5.
+Jeu de dames en ligne développé avec Angular 21+ et NestJS.
 
-## Development server
+## 🚀 Fonctionnalités
 
-To start a local development server, run:
+### Modes de jeu
+- **Joueur vs Joueur (Local)** - Deux joueurs sur le même écran
+- **Joueur vs IA** - 3 niveaux de difficulté (Facile, Moyen, Difficile)
+- **Multijoueur en ligne** - Affrontez des joueurs via WebSocket
 
-```bash
-ng serve
-```
+### Règles supportées
+- **Dames Internationales** (10x10) - Par défaut
+- **Dames Anglaises** (8x8)
+- **Dames Brésiliennes** (8x8 avec règles internationales)
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+### Fonctionnalités avancées
+- Drag & Drop fluide avec Angular CDK
+- Surbrillance des coups valides
+- Prise obligatoire (majoritaire)
+- Promotion en Dame (volante)
+- Historique des coups avec Undo/Redo
+- Chat en temps réel (multijoueur)
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+## 📦 Installation
 
 ```bash
-ng build
+# Installer les dépendances du frontend
+npm install
+
+# Installer les dépendances du serveur
+cd server && npm install && cd ..
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## 🎯 Démarrage
 
-## Running unit tests
+### Mode développement
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+**Terminal 1 - Frontend Angular:**
+```bash
+npm start
+```
+L'application sera disponible sur `http://localhost:4200`
+
+**Terminal 2 - Serveur WebSocket (pour le multijoueur):**
+```bash
+npm run start:server
+```
+Le serveur sera disponible sur `http://localhost:3000`
+
+### Mode production
 
 ```bash
-ng test
+# Build du frontend
+npm run build
+
+# Build du serveur
+npm run build:server
+
+# Démarrer le serveur SSR
+npm run serve:ssr:checkers
 ```
 
-## Running end-to-end tests
+## 🏗️ Architecture
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
+```
+src/
+├── app/
+│   ├── core/
+│   │   ├── models/       # Modèles de données (Position, Piece, Move, etc.)
+│   │   └── services/     # Services (GameEngine, AI, Online, etc.)
+│   ├── components/       # Composants réutilisables (Board, Piece, Square)
+│   └── pages/           # Pages de l'application
+│       ├── home/        # Page d'accueil
+│       ├── game-local/  # Partie locale
+│       ├── game-ai/     # Partie vs IA
+│       ├── lobby/       # Lobby multijoueur
+│       ├── game-online/ # Partie en ligne
+│       ├── tutorial/    # Règles du jeu
+│       └── settings/    # Paramètres
+server/
+├── src/
+│   ├── game/
+│   │   ├── game.gateway.ts   # WebSocket Gateway
+│   │   ├── game.service.ts   # Logique de jeu serveur
+│   │   └── room.service.ts   # Gestion des salles
+│   └── main.ts               # Point d'entrée NestJS
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## 🧠 Intelligence Artificielle
 
-## Additional Resources
+L'IA utilise plusieurs algorithmes selon le niveau de difficulté :
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- **Facile** - Coups aléatoires
+- **Moyen** - Algorithme Minimax (profondeur 3)
+- **Difficile** - Alpha-Beta Pruning (profondeur 5)
+
+## 🎨 Technologies
+
+- **Frontend:** Angular 21+, Signals, Standalone Components
+- **Styling:** Tailwind CSS
+- **Drag & Drop:** Angular CDK
+- **Backend:** NestJS
+- **WebSocket:** Socket.IO
+- **State Management:** Signals (reactive)
+
+## 📝 Règles du jeu (Dames Internationales)
+
+1. Le plateau est de 10x10 cases
+2. Chaque joueur commence avec 20 pions
+3. Les blancs jouent en premier
+4. Les pions se déplacent en diagonale vers l'avant
+5. **Prise obligatoire** - Si vous pouvez capturer, vous devez le faire
+6. **Prise majoritaire** - Vous devez choisir la séquence qui capture le plus de pièces
+7. Un pion atteignant la dernière rangée devient une **Dame**
+8. Les Dames peuvent se déplacer de plusieurs cases (volantes)
+
+## 📄 Licence
+
+MIT
