@@ -49,6 +49,34 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'profile',
+    loadComponent: () =>
+      import('./pages/profile/profile.component').then(
+        (m) => m.ProfileComponent
+      ),
+  },
+  {
+    path: 'leaderboard',
+    loadComponent: () =>
+      import('./pages/leaderboard/leaderboard.component').then(
+        (m) => m.LeaderboardComponent
+      ),
+  },
+  {
+    path: 'replays',
+    loadComponent: () =>
+      import('./pages/replays/replays.component').then(
+        (m) => m.ReplaysComponent
+      ),
+  },
+  {
+    path: 'replay/:id',
+    loadComponent: () =>
+      import('./pages/replay-viewer/replay-viewer.component').then(
+        (m) => m.ReplayViewerComponent
+      ),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

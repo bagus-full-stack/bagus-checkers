@@ -5,4 +5,7 @@ export * from './lobby/lobby.component';
 export * from './game-online/game-online.component';
 export * from './settings/settings.component';
 export * from './tutorial/tutorial.component';
-
+export * from './profile/profile.component';
+export * from './leaderboard/leaderboard.component';
+export * from './replays/replays.component';
+export * from './replay-viewer/replay-viewer.component';

@@ -10,18 +10,20 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { GameEngineService, OnlineService } from '../../core/services';
-import { ChatMessage, PlayerColor } from '../../core/models';
+import { GameEngineService, OnlineService, TimerService, ReplayService, RankingService } from '../../core/services';
+import { ChatMessage, PlayerColor, TimeMode, TIME_MODES } from '../../core/models';
 import {
   BoardComponent,
   MoveHistoryComponent,
   GameInfoComponent,
+  GameTimerComponent,
+  GameOverModalComponent,
 } from '../../components';
 
 @Component({
   selector: 'app-game-online',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormsModule, BoardComponent, MoveHistoryComponent, GameInfoComponent],
+  imports: [RouterLink, FormsModule, BoardComponent, MoveHistoryComponent, GameInfoComponent, GameTimerComponent, GameOverModalComponent],
   template: `
     <div class="game-container">
       <header class="game-header">
@@ -37,6 +39,7 @@ import {
 
       <main class="game-main">
         <aside class="sidebar left-sidebar">
+          <app-game-timer [player]="opponentColor()" />
           <app-game-info />
 
           <!-- Opponent Info -->
@@ -110,6 +113,7 @@ import {
         </section>
 
         <aside class="sidebar right-sidebar">
+          <app-game-timer [player]="myColor()" />
           <!-- Chat -->
           <div class="chat-section">
             <h3 class="section-label">Chat</h3>
@@ -145,31 +149,17 @@ import {
       </main>
 
       @if (isGameOver()) {
-        <div
-          class="game-over-modal"
-          role="dialog"
-          aria-labelledby="game-over-title"
-          aria-modal="true"
-        >
-          <div class="modal-content">
-            <h2 id="game-over-title" class="modal-title">Partie terminée !</h2>
-            @if (isWinner()) {
-              <p class="winner-text victory">Vous avez gagné ! 🎉</p>
-            } @else if (gameResult()?.winner === 'draw') {
-              <p class="winner-text">Match nul !</p>
-            } @else {
-              <p class="winner-text defeat">Vous avez perdu...</p>
-            }
-            <div class="modal-actions">
-              <button type="button" class="modal-btn primary" (click)="requestRematch()">
-                Revanche
-              </button>
-              <a routerLink="/game/online" class="modal-btn" (click)="leaveRoom()">
-                Retour au lobby
-              </a>
-            </div>
-          </div>
-        </div>
+        <app-game-over-modal
+          [winner]="gameResult()?.winner ?? null"
+          [reason]="gameResult()?.reason"
+          [stats]="gameStats()"
+          [eloChange]="eloChange()"
+          [showRematch]="true"
+          (rematch)="requestRematch()"
+          (newGame)="leaveRoom()"
+          (saveReplay)="saveReplay()"
+          (close)="closeModal()"
+        />
       }
     </div>
   `,
@@ -601,6 +591,9 @@ export class GameOnlineComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly gameEngine = inject(GameEngineService);
   private readonly onlineService = inject(OnlineService);
+  private readonly timerService = inject(TimerService);
+  private readonly replayService = inject(ReplayService);
+  private readonly rankingService = inject(RankingService);
 
   readonly connectionStatus = this.onlineService.connectionStatus;
   readonly currentPlayer = this.onlineService.currentPlayer;
@@ -611,6 +604,15 @@ export class GameOnlineComponent implements OnInit, OnDestroy {
 
   readonly chatInput = signal('');
   readonly isReady = signal(false);
+  readonly showModal = signal(true);
+  readonly eloChange = signal<number | undefined>(undefined);
+
+  readonly timeModes = Object.values(TIME_MODES);
+
+  readonly gameStats = computed(() => {
+    if (this.status() !== 'finished') return undefined;
+    return this.gameEngine.getGameStatistics() ?? undefined;
+  });
 
   readonly roomId = computed(() => this.currentRoom()?.id ?? '');
   readonly roomStatus = computed(() => this.currentRoom()?.status ?? 'waiting');
@@ -638,6 +640,10 @@ export class GameOnlineComponent implements OnInit, OnDestroy {
     const player = this.currentPlayer();
     if (!room || !player) return 'white';
     return room.hostPlayer.id === player.id ? 'white' : 'black';
+  });
+
+  readonly opponentColor = computed((): PlayerColor => {
+    return this.myColor() === 'white' ? 'black' : 'white';
   });
 
   constructor() {
@@ -671,7 +677,7 @@ export class GameOnlineComponent implements OnInit, OnDestroy {
   }
 
   isGameOver(): boolean {
-    return this.status() === 'finished';
+    return this.status() === 'finished' && this.showModal();
   }
 
   isWinner(): boolean {
@@ -702,12 +708,42 @@ export class GameOnlineComponent implements OnInit, OnDestroy {
 
   leaveRoom(): void {
     this.onlineService.leaveRoom();
+    this.router.navigate(['/game/online']);
   }
 
   requestRematch(): void {
     // Reset ready state and request rematch
     this.isReady.set(false);
+    this.showModal.set(false);
     // In a real implementation, this would send a rematch request to server
+  }
+
+  saveReplay(): void {
+    const stats = this.gameStats();
+    const result = this.gameResult();
+    if (!stats) return;
+
+    const myName = this.currentPlayer()?.name ?? 'Moi';
+    const opponentName = this.opponent()?.name ?? 'Adversaire';
+    const whiteName = this.myColor() === 'white' ? myName : opponentName;
+    const blackName = this.myColor() === 'black' ? myName : opponentName;
+
+    this.replayService.saveGame(
+      this.gameEngine.gameState()?.moveHistory ?? [],
+      this.gameEngine.getMaterialHistory(),
+      whiteName,
+      blackName,
+      result?.winner ?? null,
+      result?.reason ?? '',
+      'Dames Internationales',
+      stats.duration
+    );
+
+    alert('Partie sauvegardée !');
+  }
+
+  closeModal(): void {
+    this.showModal.set(false);
   }
 }
 

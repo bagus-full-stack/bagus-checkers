@@ -1,7 +1,8 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { GameVariantService } from '../../core/services';
-import { GAME_VARIANTS, GameVariant } from '../../core/models';
+import { GameVariantService, PreferencesService } from '../../core/services';
+import { GAME_VARIANTS } from '../../core/models';
+import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/models/preferences.model';
 
 @Component({
   selector: 'app-settings',
@@ -58,7 +59,7 @@ import { GAME_VARIANTS, GameVariant } from '../../core/models';
         <section class="settings-section" aria-labelledby="theme-heading">
           <h2 id="theme-heading" class="section-title">Thème du plateau</h2>
           <div class="theme-options" role="radiogroup" aria-labelledby="theme-heading">
-            @for (theme of themes; track theme.id) {
+            @for (theme of boardThemes; track theme.id) {
               <button
                 type="button"
                 role="radio"
@@ -69,8 +70,8 @@ import { GAME_VARIANTS, GameVariant } from '../../core/models';
               >
                 <div
                   class="theme-preview"
-                  [style.--light-color]="theme.lightColor"
-                  [style.--dark-color]="theme.darkColor"
+                  [style.--light-color]="theme.lightSquare"
+                  [style.--dark-color]="theme.darkSquare"
                   aria-hidden="true"
                 >
                   <div class="preview-square light"></div>
@@ -84,25 +85,75 @@ import { GAME_VARIANTS, GameVariant } from '../../core/models';
           </div>
         </section>
 
+        <section class="settings-section" aria-labelledby="piece-style-heading">
+          <h2 id="piece-style-heading" class="section-title">Style des pions</h2>
+          <div class="piece-style-options" role="radiogroup" aria-labelledby="piece-style-heading">
+            @for (style of pieceStyles; track style.id) {
+              <button
+                type="button"
+                role="radio"
+                [attr.aria-checked]="selectedPieceStyle() === style.id"
+                class="piece-style-option"
+                [class.selected]="selectedPieceStyle() === style.id"
+                (click)="selectPieceStyle(style.id)"
+              >
+                <div class="piece-preview" aria-hidden="true">
+                  <div
+                    class="preview-piece white"
+                    [class.use-3d]="style.use3dEffect"
+                    [style.background]="style.whitePrimary"
+                  ></div>
+                  <div
+                    class="preview-piece black"
+                    [class.use-3d]="style.use3dEffect"
+                    [style.background]="style.blackPrimary"
+                  ></div>
+                </div>
+                <span class="style-name">{{ style.name }}</span>
+              </button>
+            }
+          </div>
+        </section>
+
         <section class="settings-section" aria-labelledby="accessibility-heading">
-          <h2 id="accessibility-heading" class="section-title">Accessibilité</h2>
+          <h2 id="accessibility-heading" class="section-title">Options</h2>
           <div class="accessibility-options">
             <label class="toggle-option">
-              <span class="toggle-label">Animations réduites</span>
+              <span class="toggle-label">Sons activés</span>
               <input
                 type="checkbox"
-                [checked]="reducedMotion()"
-                (change)="toggleReducedMotion()"
+                [checked]="soundEnabled()"
+                (change)="toggleSound()"
                 class="toggle-input"
               />
               <span class="toggle-switch" aria-hidden="true"></span>
             </label>
             <label class="toggle-option">
-              <span class="toggle-label">Contraste élevé</span>
+              <span class="toggle-label">Animations</span>
               <input
                 type="checkbox"
-                [checked]="highContrast()"
-                (change)="toggleHighContrast()"
+                [checked]="animationsEnabled()"
+                (change)="toggleAnimations()"
+                class="toggle-input"
+              />
+              <span class="toggle-switch" aria-hidden="true"></span>
+            </label>
+            <label class="toggle-option">
+              <span class="toggle-label">Afficher les coups valides</span>
+              <input
+                type="checkbox"
+                [checked]="showValidMoves()"
+                (change)="toggleShowValidMoves()"
+                class="toggle-input"
+              />
+              <span class="toggle-switch" aria-hidden="true"></span>
+            </label>
+            <label class="toggle-option">
+              <span class="toggle-label">Afficher le dernier coup</span>
+              <input
+                type="checkbox"
+                [checked]="showLastMove()"
+                (change)="toggleShowLastMove()"
                 class="toggle-input"
               />
               <span class="toggle-switch" aria-hidden="true"></span>
@@ -281,6 +332,66 @@ import { GAME_VARIANTS, GameVariant } from '../../core/models';
       font-size: 0.875rem;
     }
 
+    .piece-style-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+    }
+
+    .piece-style-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: #374151;
+      border: 2px solid transparent;
+      border-radius: 0.5rem;
+      color: white;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: #4b5563;
+      }
+
+      &.selected {
+        border-color: #4f46e5;
+      }
+
+      &:focus-visible {
+        outline: 2px solid #4f46e5;
+        outline-offset: 2px;
+      }
+    }
+
+    .piece-preview {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .preview-piece {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+    }
+
+    .preview-piece.white {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .preview-piece.black {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+
+    .preview-piece.use-3d {
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+    }
+
+    .style-name {
+      font-size: 0.875rem;
+    }
+
     .accessibility-options {
       display: flex;
       flex-direction: column;
@@ -345,21 +456,20 @@ import { GAME_VARIANTS, GameVariant } from '../../core/models';
 })
 export class SettingsComponent {
   private readonly variantService = inject(GameVariantService);
+  private readonly preferencesService = inject(PreferencesService);
 
   readonly variants = GAME_VARIANTS;
   readonly selectedVariant = this.variantService.currentVariant;
 
-  readonly themes = [
-    { id: 'classic', name: 'Classique', lightColor: '#f0d9b5', darkColor: '#b58863' },
-    { id: 'wood', name: 'Bois', lightColor: '#deb887', darkColor: '#8b4513' },
-    { id: 'blue', name: 'Bleu', lightColor: '#e8eef4', darkColor: '#5b7c99' },
-    { id: 'green', name: 'Vert', lightColor: '#eeeed2', darkColor: '#769656' },
-    { id: 'dark', name: 'Sombre', lightColor: '#4a5568', darkColor: '#2d3748' },
-  ];
+  readonly boardThemes = Object.values(BOARD_THEMES);
+  readonly pieceStyles = Object.values(PIECE_STYLES);
 
-  readonly selectedTheme = signal('classic');
-  readonly reducedMotion = signal(false);
-  readonly highContrast = signal(false);
+  readonly selectedTheme = this.preferencesService.boardTheme;
+  readonly selectedPieceStyle = this.preferencesService.pieceStyle;
+  readonly soundEnabled = this.preferencesService.soundEnabled;
+  readonly animationsEnabled = this.preferencesService.animationsEnabled;
+  readonly showValidMoves = this.preferencesService.showValidMoves;
+  readonly showLastMove = this.preferencesService.showLastMove;
 
   isSelectedVariant(variantId: string): boolean {
     return this.selectedVariant().id === variantId;
@@ -370,16 +480,27 @@ export class SettingsComponent {
   }
 
   selectTheme(themeId: string): void {
-    this.selectedTheme.set(themeId);
-    // Could store in localStorage and apply CSS variables
+    this.preferencesService.setBoardTheme(themeId as BoardTheme);
   }
 
-  toggleReducedMotion(): void {
-    this.reducedMotion.update((v) => !v);
+  selectPieceStyle(styleId: string): void {
+    this.preferencesService.setPieceStyle(styleId as PieceStyle);
   }
 
-  toggleHighContrast(): void {
-    this.highContrast.update((v) => !v);
+  toggleSound(): void {
+    this.preferencesService.toggleSound();
+  }
+
+  toggleAnimations(): void {
+    this.preferencesService.toggleAnimations();
+  }
+
+  toggleShowValidMoves(): void {
+    this.preferencesService.toggleShowValidMoves();
+  }
+
+  toggleShowLastMove(): void {
+    this.preferencesService.toggleShowLastMove();
   }
 }
 

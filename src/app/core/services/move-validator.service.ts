@@ -357,7 +357,8 @@ export class MoveValidatorService {
 
   /**
    * Checks if a piece will be promoted at a position
-   * White pieces promote at row 0 (top), black pieces at row boardSize-1 (bottom)
+   * White pieces promote when they reach row 0 (top)
+   * Black pieces promote when they reach row boardSize-1 (bottom)
    */
   private willPromote(piece: Piece, newPos: Position): boolean {
     if (piece.type === 'king') return false;
