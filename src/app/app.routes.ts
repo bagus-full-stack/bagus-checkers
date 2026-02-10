@@ -77,6 +77,20 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'spectate',
+    loadComponent: () =>
+      import('./pages/spectate/spectate.component').then(
+        (m) => m.SpectateComponent
+      ),
+  },
+  {
+    path: 'spectate/:id',
+    loadComponent: () =>
+      import('./pages/spectate-game/spectate-game.component').then(
+        (m) => m.SpectateGameComponent
+      ),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

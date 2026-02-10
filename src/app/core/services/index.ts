@@ -10,3 +10,7 @@ export * from './replay.service';
 export * from './ranking.service';
 export * from './game-stats.service';
 export * from './supabase.service';
+export * from './audio.service';
+export * from './theme.service';
+export * from './keyboard.service';
+export * from './spectator.service';

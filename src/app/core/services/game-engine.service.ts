@@ -22,6 +22,7 @@ import { MoveValidatorService } from './move-validator.service';
 import { MoveHistoryService } from './move-history.service';
 import { TimerService } from './timer.service';
 import { GameStatsService } from './game-stats.service';
+import { AudioService } from './audio.service';
 
 /**
  * Main game engine service - manages game state and logic
@@ -35,6 +36,7 @@ export class GameEngineService {
   private readonly historyService = inject(MoveHistoryService);
   private readonly timerService = inject(TimerService);
   private readonly statsService = inject(GameStatsService);
+  private readonly audioService = inject(AudioService);
 
   private readonly _gameState = signal<GameState | null>(null);
   private _timeMode: TimeMode = 'unlimited';
@@ -110,6 +112,9 @@ export class GameEngineService {
     if (timeMode !== 'unlimited') {
       this.timerService.startTimer('white');
     }
+
+    // Play game start sound
+    this.audioService.playGameStart();
   }
 
   /**
@@ -272,6 +277,17 @@ export class GameEngineService {
 
     // Record stats
     this.statsService.recordMove(newState, move);
+
+    // Play appropriate sound
+    if (gameOver) {
+      this.audioService.playGameEnd();
+    } else if (move.isPromotion) {
+      this.audioService.playPromotion();
+    } else if (move.capturedPieces.length > 0) {
+      this.audioService.playCapture();
+    } else {
+      this.audioService.playMove();
+    }
 
     // Switch timer
     if (this._timeMode !== 'unlimited') {
