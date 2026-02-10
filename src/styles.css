@@ -75,3 +75,54 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #6b7280;
 }
+
+/* Theme CSS Variables */
+:root {
+  /* Dark theme (default) */
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --bg-tertiary: #374151;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+  --border-color: #374151;
+  --accent-color: #4f46e5;
+  --accent-hover: #4338ca;
+  --success-color: #22c55e;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+}
+
+.light-theme {
+  --bg-primary: #f3f4f6;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-tertiary: #9ca3af;
+  --border-color: #d1d5db;
+  --accent-color: #4f46e5;
+  --accent-hover: #4338ca;
+  --success-color: #16a34a;
+  --warning-color: #d97706;
+  --error-color: #dc2626;
+}
+
+.dark-theme {
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --bg-tertiary: #374151;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+  --border-color: #374151;
+}
+
+/* Apply theme colors */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+

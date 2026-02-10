@@ -1,4 +1,5 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 @Component({
@@ -16,11 +17,11 @@ import { RouterLink } from '@angular/router';
 
       <main class="tutorial-main">
         <nav class="tutorial-nav" aria-label="Sections du tutoriel">
-          <a href="#basics" class="nav-link">Les bases</a>
-          <a href="#movement" class="nav-link">Déplacements</a>
-          <a href="#capture" class="nav-link">Prises</a>
-          <a href="#promotion" class="nav-link">Promotion</a>
-          <a href="#winning" class="nav-link">Victoire</a>
+          <button type="button" class="nav-link" (click)="scrollTo('basics')">Les bases</button>
+          <button type="button" class="nav-link" (click)="scrollTo('movement')">Déplacements</button>
+          <button type="button" class="nav-link" (click)="scrollTo('capture')">Prises</button>
+          <button type="button" class="nav-link" (click)="scrollTo('promotion')">Promotion</button>
+          <button type="button" class="nav-link" (click)="scrollTo('winning')">Victoire</button>
         </nav>
 
         <div class="tutorial-content">
@@ -222,6 +223,11 @@ import { RouterLink } from '@angular/router';
       text-decoration: none;
       border-radius: 0.375rem;
       transition: all 0.15s ease;
+      background: transparent;
+      border: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+      text-align: left;
 
       &:hover {
         color: white;
@@ -349,5 +355,17 @@ import { RouterLink } from '@angular/router';
     }
   `,
 })
-export class TutorialComponent {}
+export class TutorialComponent {
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
+
+  scrollTo(sectionId: string): void {
+    if (!this.isBrowser) return;
+
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+}
 

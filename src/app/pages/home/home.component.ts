@@ -55,6 +55,10 @@ import { RouterLink } from '@angular/router';
       </nav>
 
       <nav class="secondary-menu" aria-label="Menu secondaire">
+        <a routerLink="/spectate" class="secondary-btn">
+          <span class="btn-icon" aria-hidden="true">👁️</span>
+          <span>En Direct</span>
+        </a>
         <a routerLink="/profile" class="secondary-btn">
           <span class="btn-icon" aria-hidden="true">👤</span>
           <span>Profil</span>

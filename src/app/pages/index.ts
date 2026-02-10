@@ -9,3 +9,5 @@ export * from './profile/profile.component';
 export * from './leaderboard/leaderboard.component';
 export * from './replays/replays.component';
 export * from './replay-viewer/replay-viewer.component';
+export * from './spectate/spectate.component';
+export * from './spectate-game/spectate-game.component';
