@@ -152,6 +152,11 @@ import { MaterialGraphComponent } from '../../components/material-graph/material
     .replay-page {
       min-height: 100vh;
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      transition: background 0.3s ease;
+    }
+
+    :host-context(.light-theme) .replay-page {
+      background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
     }
 
     .page-header {
@@ -161,6 +166,11 @@ import { MaterialGraphComponent } from '../../components/material-graph/material
       padding: 1rem 2rem;
       background: rgba(0, 0, 0, 0.3);
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .page-header {
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom-color: #d1d5db;
     }
 
     .back-link {
@@ -177,11 +187,24 @@ import { MaterialGraphComponent } from '../../components/material-graph/material
       background: rgba(255, 255, 255, 0.1);
     }
 
+    :host-context(.light-theme) .back-link {
+      color: #4b5563;
+    }
+
+    :host-context(.light-theme) .back-link:hover {
+      color: #111827;
+      background: rgba(0, 0, 0, 0.05);
+    }
+
     .page-title {
       font-size: 1.5rem;
       font-weight: 700;
       color: white;
       margin: 0;
+    }
+
+    :host-context(.light-theme) .page-title {
+      color: #111827;
     }
 
     .game-info-header {
@@ -199,8 +222,16 @@ import { MaterialGraphComponent } from '../../components/material-graph/material
       color: #f5f5f5;
     }
 
+    :host-context(.light-theme) .player.white {
+      color: #4b5563;
+    }
+
     .player.black {
       color: #9ca3af;
+    }
+
+    :host-context(.light-theme) .player.black {
+      color: #111827;
     }
 
     .vs {
@@ -221,6 +252,11 @@ import { MaterialGraphComponent } from '../../components/material-graph/material
       border-radius: 1rem;
     }
 
+    :host-context(.light-theme) .error-state {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+    }
+
     .error-icon {
       font-size: 4rem;
       display: block;
@@ -232,9 +268,17 @@ import { MaterialGraphComponent } from '../../components/material-graph/material
       margin: 0 0 0.5rem;
     }
 
+    :host-context(.light-theme) .error-state h2 {
+      color: #111827;
+    }
+
     .error-state p {
       color: #9ca3af;
       margin: 0 0 1.5rem;
+    }
+
+    :host-context(.light-theme) .error-state p {
+      color: #6b7280;
     }
 
     .btn {
@@ -248,6 +292,7 @@ import { MaterialGraphComponent } from '../../components/material-graph/material
       transition: all 0.15s ease;
       border: none;
     }
+
 
     .btn-primary {
       background: #4f46e5;

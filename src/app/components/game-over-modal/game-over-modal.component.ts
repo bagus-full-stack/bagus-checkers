@@ -150,12 +150,20 @@ import { MaterialGraphComponent } from '../material-graph/material-graph.compone
       animation: slideUp 0.3s ease;
     }
 
+    :host-context(.light-theme) .modal-content {
+      background: #ffffff;
+    }
+
     .modal-title {
       font-size: 1.5rem;
       font-weight: 700;
       color: white;
       text-align: center;
       margin: 0 0 1.5rem;
+    }
+
+    :host-context(.light-theme) .modal-title {
+      color: #111827;
     }
 
     .result-display {
@@ -188,6 +196,11 @@ import { MaterialGraphComponent } from '../material-graph/material-graph.compone
       color: #9ca3af;
     }
 
+    :host-context(.light-theme) .draw-badge {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
     .winner-icon, .draw-icon {
       font-size: 1.5rem;
     }
@@ -196,6 +209,10 @@ import { MaterialGraphComponent } from '../material-graph/material-graph.compone
       margin: 0.75rem 0 0;
       color: #9ca3af;
       font-size: 0.875rem;
+    }
+
+    :host-context(.light-theme) .reason-text {
+      color: #6b7280;
     }
 
     .stats-section {

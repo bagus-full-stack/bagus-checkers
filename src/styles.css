@@ -91,6 +91,21 @@ body {
   --success-color: #22c55e;
   --warning-color: #f59e0b;
   --error-color: #ef4444;
+
+  /* Board theme variables (default: wood) */
+  --board-light: #f0d9b5;
+  --board-dark: #b58863;
+  --board-border: #5d4e37;
+  --board-highlight: #4f46e5;
+  --board-valid-move: rgba(0, 128, 0, 0.5);
+
+  /* Piece style variables (default: 3d) */
+  --piece-white-primary: #f5f5f5;
+  --piece-white-secondary: #a3a3a3;
+  --piece-black-primary: #3d3d3d;
+  --piece-black-secondary: #1a1a1a;
+  --piece-3d-effect: 1;
+  --animations-enabled: 1;
 }
 
 .light-theme {
@@ -123,6 +138,94 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Light theme global color overrides */
+html.light-theme {
+  /* Override all dark gradient backgrounds */
+  --gradient-dark-1: #e5e7eb;
+  --gradient-dark-2: #f3f4f6;
+  --gradient-accent-1: #c7d2fe;
+  --gradient-accent-2: #e0e7ff;
+
+  color-scheme: light;
+}
+
+html.dark-theme {
+  --gradient-dark-1: #1f2937;
+  --gradient-dark-2: #111827;
+  --gradient-accent-1: #1e1b4b;
+  --gradient-accent-2: #312e81;
+
+  color-scheme: dark;
+}
+
+/* Force light theme styles on containers */
+html.light-theme body {
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%);
+}
+
+/* Light theme component overrides using attribute selector for Angular encapsulation */
+html.light-theme {
+  /* Override backgrounds with high specificity */
+  & [class*="container"] {
+    background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
+  }
+
+  & [class*="header"] {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #d1d5db;
+    color: #111827;
+  }
+
+  /* Text colors */
+  & h1, & h2, & h3, & h4, & h5, & h6 {
+    color: #111827;
+  }
+
+  & p, & span, & div {
+    color: inherit;
+  }
+
+  & a:not(.menu-btn):not(.primary) {
+    color: #4b5563;
+  }
+
+  & a:not(.menu-btn):not(.primary):hover {
+    color: #111827;
+  }
+
+  /* Buttons and interactive elements */
+  & button:not(.menu-btn):not(.primary):not(.theme-toggle):not(.sound-toggle):not(.help-toggle) {
+    background: #ffffff;
+    color: #111827;
+    border-color: #d1d5db;
+  }
+
+  & button:not(.menu-btn):not(.primary):not(.theme-toggle):not(.sound-toggle):not(.help-toggle):hover {
+    background: #f3f4f6;
+  }
+
+  /* Cards and panels */
+  & [class*="card"],
+  & [class*="panel"],
+  & [class*="option"]:not(.selected) {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    color: #111827;
+  }
+
+  & [class*="option"].selected {
+    background: rgba(79, 70, 229, 0.1);
+    border-color: #4f46e5;
+  }
+
+  /* Keep primary buttons styled */
+  & .primary,
+  & [class*="primary"] {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: white;
+  }
 }
 
 

@@ -40,6 +40,7 @@ import { PlayerColor } from '../../core/models/piece.model';
       border-radius: 0.5rem;
       padding: 0.75rem 1rem;
       min-width: 120px;
+      transition: background 0.3s ease;
 
       &.white {
         border-left: 4px solid #f5f5f5;
@@ -53,6 +54,16 @@ import { PlayerColor } from '../../core/models/piece.model';
         background: #374151;
         box-shadow: 0 0 0 2px var(--board-highlight, #4f46e5);
       }
+    }
+
+    :host-context(.light-theme) {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-left-width: 4px;
+    }
+
+    :host-context(.light-theme).active {
+      background: #f3f4f6;
     }
 
     .timer-container {
@@ -74,6 +85,10 @@ import { PlayerColor } from '../../core/models/piece.model';
       letter-spacing: 0.05em;
     }
 
+    :host-context(.light-theme) .player-label {
+      color: #6b7280;
+    }
+
     .active-indicator {
       color: #22c55e;
       font-size: 0.5rem;
@@ -88,8 +103,16 @@ import { PlayerColor } from '../../core/models/piece.model';
       transition: color 0.3s ease;
     }
 
+    :host-context(.light-theme) .time-display {
+      color: #111827;
+    }
+
     .time-display.low-time {
       color: #fbbf24;
+    }
+
+    :host-context(.light-theme) .time-display.low-time {
+      color: #d97706;
     }
 
     .time-display.critical-time {

@@ -94,7 +94,7 @@ import { PieceComponent } from '../piece/piece.component';
       display: grid;
       grid-template-columns: repeat(var(--board-size), 1fr);
       grid-template-rows: repeat(var(--board-size), 1fr);
-      border: 4px solid #5d4e37;
+      border: 4px solid var(--board-border, #5d4e37);
       border-radius: 4px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
       aspect-ratio: 1;

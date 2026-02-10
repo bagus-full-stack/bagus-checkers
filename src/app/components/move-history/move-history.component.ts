@@ -59,6 +59,13 @@ import { moveToNotation } from '../../core/models';
       height: 100%;
       display: flex;
       flex-direction: column;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    :host-context(.light-theme) .history-container {
+      background: #ffffff;
+      color: #111827;
+      border: 1px solid #e5e7eb;
     }
 
     .history-title {
@@ -67,6 +74,10 @@ import { moveToNotation } from '../../core/models';
       margin: 0 0 1rem 0;
       padding-bottom: 0.5rem;
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .history-title {
+      border-bottom-color: #e5e7eb;
     }
 
     .controls {
@@ -101,6 +112,16 @@ import { moveToNotation } from '../../core/models';
       }
     }
 
+    :host-context(.light-theme) .control-btn {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+      color: #111827;
+
+      &:hover:not(:disabled) {
+        background: #e5e7eb;
+      }
+    }
+
     .moves-list {
       flex: 1;
       overflow-y: auto;
@@ -114,6 +135,10 @@ import { moveToNotation } from '../../core/models';
       margin: 1rem 0;
     }
 
+    :host-context(.light-theme) .empty-message {
+      color: #6b7280;
+    }
+
     .move-pair {
       display: flex;
       gap: 0.5rem;
@@ -125,9 +150,17 @@ import { moveToNotation } from '../../core/models';
       }
     }
 
+    :host-context(.light-theme) .move-pair {
+      border-bottom-color: #e5e7eb;
+    }
+
     .move-number {
       color: #9ca3af;
       min-width: 2rem;
+    }
+
+    :host-context(.light-theme) .move-number {
+      color: #6b7280;
     }
 
     .move {
@@ -145,6 +178,11 @@ import { moveToNotation } from '../../core/models';
     .black-move {
       background: #1f2937;
       border: 1px solid #4b5563;
+    }
+
+    :host-context(.light-theme) .black-move {
+      background: #374151;
+      color: white;
     }
   `,
 })

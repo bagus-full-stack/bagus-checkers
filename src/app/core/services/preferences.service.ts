@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, effect, PLATFORM_ID, inject } from '@angular/core';
+import { Injectable, signal, computed, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import {
   UserPreferences,
@@ -51,10 +51,10 @@ export class PreferencesService {
   readonly showLastMove = computed(() => this._preferences().showLastMove);
 
   constructor() {
-    // Apply theme CSS variables whenever preferences change
-    effect(() => {
+    // Apply theme CSS variables on initialization
+    if (this.isBrowser) {
       this.applyTheme(this._preferences());
-    });
+    }
   }
 
   /**
@@ -106,6 +106,8 @@ export class PreferencesService {
     const newPrefs = { ...this._preferences(), ...partial };
     this._preferences.set(newPrefs);
     this.savePreferences(newPrefs);
+    // Apply theme immediately for responsive UI
+    this.applyTheme(newPrefs);
   }
 
   /**

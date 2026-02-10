@@ -193,6 +193,11 @@ import { Piece, createPosition } from '../../core/models';
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
       display: flex;
       flex-direction: column;
+      transition: background 0.3s ease;
+    }
+
+    :host-context(.light-theme) .spectate-game-page {
+      background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
     }
 
     .page-header {
@@ -202,6 +207,11 @@ import { Piece, createPosition } from '../../core/models';
       padding: 1rem 2rem;
       background: rgba(0, 0, 0, 0.3);
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .page-header {
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom-color: #d1d5db;
     }
 
     .back-link {
@@ -218,6 +228,15 @@ import { Piece, createPosition } from '../../core/models';
       background: rgba(255, 255, 255, 0.1);
     }
 
+    :host-context(.light-theme) .back-link {
+      color: #4b5563;
+    }
+
+    :host-context(.light-theme) .back-link:hover {
+      color: #111827;
+      background: rgba(0, 0, 0, 0.05);
+    }
+
     .game-title {
       flex: 1;
       display: flex;
@@ -232,8 +251,16 @@ import { Piece, createPosition } from '../../core/models';
       color: #f5f5f5;
     }
 
+    :host-context(.light-theme) .game-title .white {
+      color: #4b5563;
+    }
+
     .game-title .black {
       color: #9ca3af;
+    }
+
+    :host-context(.light-theme) .game-title .black {
+      color: #111827;
     }
 
     .game-title .vs {

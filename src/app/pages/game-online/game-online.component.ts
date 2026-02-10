@@ -169,6 +169,11 @@ import {
       display: flex;
       flex-direction: column;
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      transition: background 0.3s ease;
+    }
+
+    :host-context(.light-theme) .game-container {
+      background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
     }
 
     .game-header {
@@ -178,6 +183,11 @@ import {
       padding: 1rem 2rem;
       background: rgba(0, 0, 0, 0.3);
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .game-header {
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom-color: #d1d5db;
     }
 
     .back-link {
@@ -194,11 +204,24 @@ import {
       }
     }
 
+    :host-context(.light-theme) .back-link {
+      color: #4b5563;
+
+      &:hover {
+        color: #111827;
+        background: rgba(0, 0, 0, 0.05);
+      }
+    }
+
     .game-title {
       font-size: 1.5rem;
       font-weight: 700;
       color: white;
       margin: 0;
+    }
+
+    :host-context(.light-theme) .game-title {
+      color: #111827;
     }
 
     .connection-indicator {
@@ -216,6 +239,10 @@ import {
       &.disconnected, &.error {
         color: #ef4444;
       }
+    }
+
+    :host-context(.light-theme) .connection-indicator {
+      background: rgba(0, 0, 0, 0.05);
     }
 
     .status-dot {

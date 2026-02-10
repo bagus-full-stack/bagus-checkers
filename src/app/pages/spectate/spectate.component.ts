@@ -190,6 +190,11 @@ import { SpectatorService, SpectatorGame } from '../../core/services/spectator.s
     .spectate-page {
       min-height: 100vh;
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      transition: background 0.3s ease;
+    }
+
+    :host-context(.light-theme) .spectate-page {
+      background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
     }
 
     .page-header {
@@ -199,6 +204,11 @@ import { SpectatorService, SpectatorGame } from '../../core/services/spectator.s
       padding: 1rem 2rem;
       background: rgba(0, 0, 0, 0.3);
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .page-header {
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom-color: #d1d5db;
     }
 
     .back-link {
@@ -215,12 +225,25 @@ import { SpectatorService, SpectatorGame } from '../../core/services/spectator.s
       background: rgba(255, 255, 255, 0.1);
     }
 
+    :host-context(.light-theme) .back-link {
+      color: #4b5563;
+    }
+
+    :host-context(.light-theme) .back-link:hover {
+      color: #111827;
+      background: rgba(0, 0, 0, 0.05);
+    }
+
     .page-title {
       font-size: 1.5rem;
       font-weight: 700;
       color: white;
       margin: 0;
       flex: 1;
+    }
+
+    :host-context(.light-theme) .page-title {
+      color: #111827;
     }
 
     .header-stats {
@@ -234,6 +257,10 @@ import { SpectatorService, SpectatorGame } from '../../core/services/spectator.s
       gap: 0.5rem;
       color: #9ca3af;
       font-size: 0.875rem;
+    }
+
+    :host-context(.light-theme) .stat {
+      color: #6b7280;
     }
 
     .stat-icon {
@@ -257,6 +284,10 @@ import { SpectatorService, SpectatorGame } from '../../core/services/spectator.s
       margin: 0 0 1rem;
     }
 
+    :host-context(.light-theme) .section-title {
+      color: #111827;
+    }
+
     .games-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -273,10 +304,19 @@ import { SpectatorService, SpectatorGame } from '../../core/services/spectator.s
       position: relative;
     }
 
+    :host-context(.light-theme) .game-card {
+      background: #ffffff;
+      border-color: #e5e7eb;
+    }
+
     .game-card:hover {
       background: #374151;
       border-color: #4f46e5;
       transform: translateY(-2px);
+    }
+
+    :host-context(.light-theme) .game-card:hover {
+      background: #f9fafb;
     }
 
     .game-card:focus-visible {
@@ -287,6 +327,10 @@ import { SpectatorService, SpectatorGame } from '../../core/services/spectator.s
     .game-card.featured {
       border-color: #fbbf24;
       background: linear-gradient(135deg, #1f2937 0%, #292524 100%);
+    }
+
+    :host-context(.light-theme) .game-card.featured {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
     }
 
     .game-card.high-level {

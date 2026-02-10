@@ -144,6 +144,12 @@ import { GameRoom } from '../../core/models';
       min-height: 100vh;
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
       color: white;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    :host-context(.light-theme) .lobby-container {
+      background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
+      color: #111827;
     }
 
     .lobby-header {
@@ -153,6 +159,11 @@ import { GameRoom } from '../../core/models';
       padding: 1rem 2rem;
       background: rgba(0, 0, 0, 0.3);
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .lobby-header {
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom-color: #d1d5db;
     }
 
     .back-link {
@@ -166,6 +177,15 @@ import { GameRoom } from '../../core/models';
       &:hover {
         color: white;
         background: rgba(255, 255, 255, 0.1);
+      }
+    }
+
+    :host-context(.light-theme) .back-link {
+      color: #4b5563;
+
+      &:hover {
+        color: #111827;
+        background: rgba(0, 0, 0, 0.05);
       }
     }
 
@@ -198,6 +218,10 @@ import { GameRoom } from '../../core/models';
       }
     }
 
+    :host-context(.light-theme) .connection-status {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
     .status-dot {
       width: 8px;
       height: 8px;
@@ -217,6 +241,11 @@ import { GameRoom } from '../../core/models';
       padding: 2rem;
       max-width: 400px;
       margin: 4rem auto;
+    }
+
+    :host-context(.light-theme) .connect-section {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
     }
 
     .section-title {
@@ -240,6 +269,10 @@ import { GameRoom } from '../../core/models';
     .form-label {
       font-size: 0.875rem;
       color: #d1d5db;
+    }
+
+    :host-context(.light-theme) .form-label {
+      color: #4b5563;
     }
 
     .form-input {
