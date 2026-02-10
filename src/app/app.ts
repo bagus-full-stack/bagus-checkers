@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { ThemeService, KeyboardService, AudioService } from './core/services';
+import { ThemeService, KeyboardService, AudioService, I18nService, PreferencesService } from './core/services';
 import { KeyboardHelpComponent } from './components';
 
 @Component({
@@ -15,8 +15,8 @@ import { KeyboardHelpComponent } from './components';
       type="button"
       class="theme-toggle"
       (click)="toggleTheme()"
-      [attr.aria-label]="'Thème actuel: ' + (isDarkMode() ? 'sombre' : 'clair')"
-      title="Changer de thème (T)"
+      [attr.aria-label]="currentLanguage() === 'fr' ? ('Thème actuel: ' + (isDarkMode() ? 'sombre' : 'clair')) : ('Current theme: ' + (isDarkMode() ? 'dark' : 'light'))"
+      [attr.title]="currentLanguage() === 'fr' ? 'Changer de thème (T)' : 'Change theme (T)'"
     >
       {{ isDarkMode() ? '🌙' : '☀️' }}
     </button>
@@ -26,8 +26,8 @@ import { KeyboardHelpComponent } from './components';
       type="button"
       class="sound-toggle"
       (click)="toggleSound()"
-      [attr.aria-label]="'Son: ' + (soundEnabled() ? 'activé' : 'désactivé')"
-      title="Activer/désactiver le son (M)"
+      [attr.aria-label]="currentLanguage() === 'fr' ? ('Son: ' + (soundEnabled() ? 'activé' : 'désactivé')) : ('Sound: ' + (soundEnabled() ? 'on' : 'off'))"
+      [attr.title]="currentLanguage() === 'fr' ? 'Activer/désactiver le son (M)' : 'Toggle sound (M)'"
     >
       {{ soundEnabled() ? '🔊' : '🔇' }}
     </button>
@@ -37,8 +37,8 @@ import { KeyboardHelpComponent } from './components';
       type="button"
       class="help-toggle"
       (click)="showHelp()"
-      aria-label="Raccourcis clavier"
-      title="Raccourcis clavier (?)"
+      [attr.aria-label]="currentLanguage() === 'fr' ? 'Raccourcis clavier' : 'Keyboard shortcuts'"
+      [attr.title]="currentLanguage() === 'fr' ? 'Raccourcis clavier (?)' : 'Keyboard shortcuts (?)'"
     >
       ⌨️
     </button>
@@ -133,10 +133,13 @@ export class App implements OnInit {
   private readonly themeService = inject(ThemeService);
   private readonly keyboardService = inject(KeyboardService);
   private readonly audioService = inject(AudioService);
+  private readonly i18nService = inject(I18nService);
+  private readonly preferencesService = inject(PreferencesService); // Ensures board theme is applied on startup
 
   readonly isDarkMode = this.themeService.isDarkMode;
   readonly soundEnabled = this.audioService.soundEnabled;
   readonly showKeyboardHelp = this.keyboardService.showHelp;
+  readonly currentLanguage = this.i18nService.currentLanguage;
 
   ngOnInit(): void {
     // Services are initialized automatically

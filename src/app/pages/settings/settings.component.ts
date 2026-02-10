@@ -1,6 +1,6 @@
-import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { GameVariantService, PreferencesService } from '../../core/services';
+import { GameVariantService, PreferencesService, I18nService, Language } from '../../core/services';
 import { GAME_VARIANTS } from '../../core/models';
 import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/models/preferences.model';
 
@@ -11,15 +11,34 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
   template: `
     <div class="settings-container">
       <header class="settings-header">
-        <a routerLink="/" class="back-link" aria-label="Retour à l'accueil">
-          ← Accueil
+        <a routerLink="/" class="back-link" [attr.aria-label]="i18n.t('settings.backToHome')">
+          ← {{ i18n.t('common.home') }}
         </a>
-        <h1 class="settings-title">Paramètres</h1>
+        <h1 class="settings-title">{{ i18n.t('settings.title') }}</h1>
       </header>
 
       <main class="settings-main">
+        <section class="settings-section" aria-labelledby="language-heading">
+          <h2 id="language-heading" class="section-title">{{ i18n.t('settings.language') }}</h2>
+          <div class="language-options" role="radiogroup" aria-labelledby="language-heading">
+            @for (lang of i18n.availableLanguages; track lang.code) {
+              <button
+                type="button"
+                role="radio"
+                [attr.aria-checked]="currentLanguage() === lang.code"
+                class="language-option"
+                [class.selected]="currentLanguage() === lang.code"
+                (click)="selectLanguage(lang.code)"
+              >
+                <span class="language-flag" aria-hidden="true">{{ lang.code === 'fr' ? '🇫🇷' : '🇬🇧' }}</span>
+                <span class="language-name">{{ lang.nativeName }}</span>
+              </button>
+            }
+          </div>
+        </section>
+
         <section class="settings-section" aria-labelledby="variant-heading">
-          <h2 id="variant-heading" class="section-title">Variante de jeu</h2>
+          <h2 id="variant-heading" class="section-title">{{ i18n.t('settings.gameVariant') }}</h2>
           <div class="variant-options" role="radiogroup" aria-labelledby="variant-heading">
             @for (variant of variants; track variant.id) {
               <button
@@ -33,21 +52,21 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
                 <span class="variant-name">{{ variant.name }}</span>
                 <span class="variant-details">
                   {{ variant.boardSize }}x{{ variant.boardSize }} •
-                  {{ variant.piecesPerPlayer }} pions
+                  {{ variant.piecesPerPlayer }} {{ currentLanguage() === 'fr' ? 'pions' : 'pieces' }}
                 </span>
                 <ul class="variant-rules">
                   <li>
                     @if (variant.flyingKings) {
-                      Dames volantes
+                      {{ i18n.t('settings.flyingKings') }}
                     } @else {
-                      Dames classiques
+                      {{ i18n.t('settings.classicKings') }}
                     }
                   </li>
                   <li>
                     @if (variant.mandatoryMaxCapture) {
-                      Prise maximale obligatoire
+                      {{ i18n.t('settings.mandatoryCapture') }}
                     } @else {
-                      Prise libre
+                      {{ i18n.t('settings.freeCapture') }}
                     }
                   </li>
                 </ul>
@@ -57,7 +76,7 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
         </section>
 
         <section class="settings-section" aria-labelledby="theme-heading">
-          <h2 id="theme-heading" class="section-title">Thème du plateau</h2>
+          <h2 id="theme-heading" class="section-title">{{ i18n.t('settings.boardTheme') }}</h2>
           <div class="theme-options" role="radiogroup" aria-labelledby="theme-heading">
             @for (theme of boardThemes; track theme.id) {
               <button
@@ -79,14 +98,14 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
                   <div class="preview-square dark"></div>
                   <div class="preview-square light"></div>
                 </div>
-                <span class="theme-name">{{ theme.name }}</span>
+                <span class="theme-name">{{ getThemeName(theme.id) }}</span>
               </button>
             }
           </div>
         </section>
 
         <section class="settings-section" aria-labelledby="piece-style-heading">
-          <h2 id="piece-style-heading" class="section-title">Style des pions</h2>
+          <h2 id="piece-style-heading" class="section-title">{{ i18n.t('settings.pieceStyle') }}</h2>
           <div class="piece-style-options" role="radiogroup" aria-labelledby="piece-style-heading">
             @for (style of pieceStyles; track style.id) {
               <button
@@ -109,17 +128,17 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
                     [style.background]="style.blackPrimary"
                   ></div>
                 </div>
-                <span class="style-name">{{ style.name }}</span>
+                <span class="style-name">{{ getPieceStyleName(style.id) }}</span>
               </button>
             }
           </div>
         </section>
 
         <section class="settings-section" aria-labelledby="accessibility-heading">
-          <h2 id="accessibility-heading" class="section-title">Options</h2>
+          <h2 id="accessibility-heading" class="section-title">{{ i18n.t('settings.options') }}</h2>
           <div class="accessibility-options">
             <label class="toggle-option">
-              <span class="toggle-label">Sons activés</span>
+              <span class="toggle-label">{{ i18n.t('settings.soundEnabled') }}</span>
               <input
                 type="checkbox"
                 [checked]="soundEnabled()"
@@ -129,7 +148,7 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
               <span class="toggle-switch" aria-hidden="true"></span>
             </label>
             <label class="toggle-option">
-              <span class="toggle-label">Animations</span>
+              <span class="toggle-label">{{ i18n.t('settings.animations') }}</span>
               <input
                 type="checkbox"
                 [checked]="animationsEnabled()"
@@ -139,7 +158,7 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
               <span class="toggle-switch" aria-hidden="true"></span>
             </label>
             <label class="toggle-option">
-              <span class="toggle-label">Afficher les coups valides</span>
+              <span class="toggle-label">{{ i18n.t('settings.showValidMoves') }}</span>
               <input
                 type="checkbox"
                 [checked]="showValidMoves()"
@@ -149,7 +168,7 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
               <span class="toggle-switch" aria-hidden="true"></span>
             </label>
             <label class="toggle-option">
-              <span class="toggle-label">Afficher le dernier coup</span>
+              <span class="toggle-label">{{ i18n.t('settings.showLastMove') }}</span>
               <input
                 type="checkbox"
                 [checked]="showLastMove()"
@@ -168,6 +187,12 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       min-height: 100vh;
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
       color: white;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    :host-context(.light-theme) .settings-container {
+      background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
+      color: #111827;
     }
 
     .settings-header {
@@ -177,6 +202,67 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       padding: 1rem 2rem;
       background: rgba(0, 0, 0, 0.3);
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .settings-header {
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom-color: #d1d5db;
+    }
+
+    .language-options {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .language-option {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      background: #374151;
+      border: 2px solid transparent;
+      border-radius: 0.5rem;
+      color: white;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: #4b5563;
+      }
+
+      &.selected {
+        border-color: #4f46e5;
+        background: rgba(79, 70, 229, 0.2);
+      }
+
+      &:focus-visible {
+        outline: 2px solid #4f46e5;
+        outline-offset: 2px;
+      }
+    }
+
+    :host-context(.light-theme) .language-option {
+      background: #ffffff;
+      color: #111827;
+      border-color: #e5e7eb;
+
+      &:hover {
+        background: #f3f4f6;
+      }
+
+      &.selected {
+        background: rgba(79, 70, 229, 0.1);
+        border-color: #4f46e5;
+      }
+    }
+
+    .language-flag {
+      font-size: 1.5rem;
+    }
+
+    .language-name {
+      font-size: 1rem;
+      font-weight: 500;
     }
 
     .back-link {
@@ -195,6 +281,15 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       &:focus-visible {
         outline: 2px solid #4f46e5;
         outline-offset: 2px;
+      }
+    }
+
+    :host-context(.light-theme) .back-link {
+      color: #4b5563;
+
+      &:hover {
+        color: #111827;
+        background: rgba(0, 0, 0, 0.05);
       }
     }
 
@@ -220,6 +315,10 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       margin: 0 0 1rem 0;
       padding-bottom: 0.5rem;
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .section-title {
+      border-bottom-color: #d1d5db;
     }
 
     .variant-options {
@@ -256,6 +355,21 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       }
     }
 
+    :host-context(.light-theme) .variant-option {
+      background: #ffffff;
+      color: #111827;
+      border-color: #e5e7eb;
+
+      &:hover {
+        background: #f3f4f6;
+      }
+
+      &.selected {
+        background: rgba(79, 70, 229, 0.1);
+        border-color: #4f46e5;
+      }
+    }
+
     .variant-name {
       font-size: 1.125rem;
       font-weight: 600;
@@ -267,6 +381,10 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       margin-top: 0.25rem;
     }
 
+    :host-context(.light-theme) .variant-details {
+      color: #6b7280;
+    }
+
     .variant-rules {
       display: flex;
       gap: 1rem;
@@ -275,6 +393,10 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       list-style: none;
       font-size: 0.75rem;
       color: #6b7280;
+    }
+
+    :host-context(.light-theme) .variant-rules {
+      color: #9ca3af;
     }
 
     .theme-options {
@@ -307,6 +429,21 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       &:focus-visible {
         outline: 2px solid #4f46e5;
         outline-offset: 2px;
+      }
+    }
+
+    :host-context(.light-theme) .theme-option {
+      background: #ffffff;
+      color: #111827;
+      border-color: #e5e7eb;
+
+      &:hover {
+        background: #f3f4f6;
+      }
+
+      &.selected {
+        border-color: #4f46e5;
+        background: rgba(79, 70, 229, 0.1);
       }
     }
 
@@ -365,6 +502,21 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       }
     }
 
+    :host-context(.light-theme) .piece-style-option {
+      background: #ffffff;
+      color: #111827;
+      border-color: #e5e7eb;
+
+      &:hover {
+        background: #f3f4f6;
+      }
+
+      &.selected {
+        border-color: #4f46e5;
+        background: rgba(79, 70, 229, 0.1);
+      }
+    }
+
     .piece-preview {
       display: flex;
       gap: 0.5rem;
@@ -413,6 +565,12 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       }
     }
 
+    :host-context(.light-theme) .toggle-option {
+      background: #ffffff;
+      color: #111827;
+      border: 1px solid #e5e7eb;
+    }
+
     .toggle-label {
       font-size: 1rem;
     }
@@ -457,6 +615,7 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
 export class SettingsComponent {
   private readonly variantService = inject(GameVariantService);
   private readonly preferencesService = inject(PreferencesService);
+  readonly i18n = inject(I18nService);
 
   readonly variants = GAME_VARIANTS;
   readonly selectedVariant = this.variantService.currentVariant;
@@ -470,6 +629,7 @@ export class SettingsComponent {
   readonly animationsEnabled = this.preferencesService.animationsEnabled;
   readonly showValidMoves = this.preferencesService.showValidMoves;
   readonly showLastMove = this.preferencesService.showLastMove;
+  readonly currentLanguage = this.i18n.currentLanguage;
 
   isSelectedVariant(variantId: string): boolean {
     return this.selectedVariant().id === variantId;
@@ -485,6 +645,20 @@ export class SettingsComponent {
 
   selectPieceStyle(styleId: string): void {
     this.preferencesService.setPieceStyle(styleId as PieceStyle);
+  }
+
+  selectLanguage(lang: Language): void {
+    this.i18n.setLanguage(lang);
+  }
+
+  getThemeName(themeId: string): string {
+    const key = `theme.${themeId}` as const;
+    return this.i18n.t(key as keyof typeof import('../../core/i18n/translations/fr').FR_TRANSLATIONS);
+  }
+
+  getPieceStyleName(styleId: string): string {
+    const key = `pieceStyle.${styleId}` as const;
+    return this.i18n.t(key as keyof typeof import('../../core/i18n/translations/fr').FR_TRANSLATIONS);
   }
 
   toggleSound(): void {

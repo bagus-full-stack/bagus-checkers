@@ -42,14 +42,22 @@ import { Piece } from '../../core/models';
       }
 
       &.white {
-        background: linear-gradient(145deg, #f5f5f5, #d4d4d4);
+        background: linear-gradient(
+          145deg,
+          var(--piece-white-primary, #f5f5f5),
+          var(--piece-white-secondary, #d4d4d4)
+        );
         box-shadow:
           0 4px 8px rgba(0, 0, 0, 0.3),
           inset 0 2px 4px rgba(255, 255, 255, 0.5);
       }
 
       &.black {
-        background: linear-gradient(145deg, #3d3d3d, #1a1a1a);
+        background: linear-gradient(
+          145deg,
+          var(--piece-black-primary, #3d3d3d),
+          var(--piece-black-secondary, #1a1a1a)
+        );
         box-shadow:
           0 4px 8px rgba(0, 0, 0, 0.4),
           inset 0 2px 4px rgba(255, 255, 255, 0.1);
@@ -58,7 +66,7 @@ import { Piece } from '../../core/models';
       &.selected {
         transform: scale(1.1);
         box-shadow:
-          0 0 0 3px #4f46e5,
+          0 0 0 3px var(--board-highlight, #4f46e5),
           0 8px 16px rgba(79, 70, 229, 0.4);
       }
 
@@ -71,7 +79,7 @@ import { Piece } from '../../core/models';
       }
 
       &:focus-visible {
-        outline: 3px solid #4f46e5;
+        outline: 3px solid var(--board-highlight, #4f46e5);
         outline-offset: 2px;
       }
     }

@@ -1,5 +1,6 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { I18nService } from '../../core/services';
 
 @Component({
   selector: 'app-home',
@@ -8,48 +9,48 @@ import { RouterLink } from '@angular/router';
   template: `
     <div class="home-container">
       <header class="hero">
-        <h1 class="title">Angular Checkers Master</h1>
-        <p class="subtitle">Le jeu de dames nouvelle génération</p>
+        <h1 class="title">{{ i18n.t('home.title') }}</h1>
+        <p class="subtitle">{{ i18n.t('home.subtitle') }}</p>
       </header>
 
       <nav class="menu" aria-label="Menu principal">
         <a routerLink="/game/local" class="menu-btn primary">
           <span class="btn-icon" aria-hidden="true">👥</span>
           <span class="btn-text">
-            <strong>Jouer en Local</strong>
-            <small>2 joueurs sur le même écran</small>
+            <strong>{{ i18n.t('home.playLocal') }}</strong>
+            <small>{{ i18n.t('home.playLocalDesc') }}</small>
           </span>
         </a>
 
         <a routerLink="/game/ai" class="menu-btn">
           <span class="btn-icon" aria-hidden="true">🤖</span>
           <span class="btn-text">
-            <strong>Jouer contre l'IA</strong>
-            <small>3 niveaux de difficulté</small>
+            <strong>{{ i18n.t('home.playAI') }}</strong>
+            <small>{{ i18n.t('home.playAIDesc') }}</small>
           </span>
         </a>
 
         <a routerLink="/game/online" class="menu-btn">
           <span class="btn-icon" aria-hidden="true">🌐</span>
           <span class="btn-text">
-            <strong>Jouer en Ligne</strong>
-            <small>Affrontez des joueurs du monde entier</small>
+            <strong>{{ i18n.t('home.playOnline') }}</strong>
+            <small>{{ i18n.t('home.playOnlineDesc') }}</small>
           </span>
         </a>
 
         <a routerLink="/tutorial" class="menu-btn secondary">
           <span class="btn-icon" aria-hidden="true">📖</span>
           <span class="btn-text">
-            <strong>Tutoriel</strong>
-            <small>Apprenez les règles du jeu</small>
+            <strong>{{ i18n.t('home.tutorial') }}</strong>
+            <small>{{ i18n.t('home.tutorialDesc') }}</small>
           </span>
         </a>
 
         <a routerLink="/settings" class="menu-btn secondary">
           <span class="btn-icon" aria-hidden="true">⚙️</span>
           <span class="btn-text">
-            <strong>Paramètres</strong>
-            <small>Personnalisez votre expérience</small>
+            <strong>{{ i18n.t('common.settings') }}</strong>
+            <small>{{ currentLanguage() === 'fr' ? 'Personnalisez votre expérience' : 'Customize your experience' }}</small>
           </span>
         </a>
       </nav>
@@ -57,24 +58,24 @@ import { RouterLink } from '@angular/router';
       <nav class="secondary-menu" aria-label="Menu secondaire">
         <a routerLink="/spectate" class="secondary-btn">
           <span class="btn-icon" aria-hidden="true">👁️</span>
-          <span>En Direct</span>
+          <span>{{ i18n.t('home.spectate') }}</span>
         </a>
         <a routerLink="/profile" class="secondary-btn">
           <span class="btn-icon" aria-hidden="true">👤</span>
-          <span>Profil</span>
+          <span>{{ i18n.t('home.profile') }}</span>
         </a>
         <a routerLink="/leaderboard" class="secondary-btn">
           <span class="btn-icon" aria-hidden="true">🏆</span>
-          <span>Classement</span>
+          <span>{{ i18n.t('home.leaderboard') }}</span>
         </a>
         <a routerLink="/replays" class="secondary-btn">
           <span class="btn-icon" aria-hidden="true">📼</span>
-          <span>Replays</span>
+          <span>{{ i18n.t('home.replays') }}</span>
         </a>
       </nav>
 
       <footer class="footer">
-        <p>Dames Internationales (10x10) • Règles officielles</p>
+        <p>{{ currentLanguage() === 'fr' ? 'Dames Internationales (10x10) • Règles officielles' : 'International Checkers (10x10) • Official Rules' }}</p>
       </footer>
     </div>
   `,
@@ -87,6 +88,11 @@ import { RouterLink } from '@angular/router';
       justify-content: center;
       padding: 2rem;
       background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+      transition: background 0.3s ease;
+    }
+
+    :host-context(.light-theme) .home-container {
+      background: linear-gradient(135deg, #c7d2fe 0%, #e0e7ff 50%, #c7d2fe 100%);
     }
 
     .hero {
@@ -102,10 +108,19 @@ import { RouterLink } from '@angular/router';
       text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
+    :host-context(.light-theme) .title {
+      color: #1e1b4b;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
     .subtitle {
       font-size: 1.25rem;
       color: #c7d2fe;
       margin: 0;
+    }
+
+    :host-context(.light-theme) .subtitle {
+      color: #4338ca;
     }
 
     .menu {
@@ -150,6 +165,27 @@ import { RouterLink } from '@angular/router';
       }
     }
 
+    :host-context(.light-theme) .menu-btn {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: rgba(79, 70, 229, 0.2);
+      color: #1e1b4b;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+      &:hover {
+        background: white;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      }
+
+      &.primary {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        color: white;
+      }
+
+      &.secondary {
+        background: rgba(255, 255, 255, 0.7);
+      }
+    }
+
     .btn-icon {
       font-size: 2rem;
       width: 48px;
@@ -172,11 +208,23 @@ import { RouterLink } from '@angular/router';
       }
     }
 
+    :host-context(.light-theme) .btn-text small {
+      color: #6366f1;
+    }
+
+    :host-context(.light-theme) .menu-btn.primary .btn-text small {
+      color: #c7d2fe;
+    }
+
     .footer {
       margin-top: 3rem;
       text-align: center;
       color: #a5b4fc;
       font-size: 0.875rem;
+    }
+
+    :host-context(.light-theme) .footer {
+      color: #4338ca;
     }
 
     .secondary-menu {
@@ -213,7 +261,21 @@ import { RouterLink } from '@angular/router';
         outline-offset: 2px;
       }
     }
+
+    :host-context(.light-theme) .secondary-btn {
+      background: rgba(255, 255, 255, 0.7);
+      border-color: rgba(79, 70, 229, 0.2);
+      color: #4338ca;
+
+      &:hover {
+        background: white;
+        color: #1e1b4b;
+      }
+    }
   `,
 })
-export class HomeComponent {}
+export class HomeComponent {
+  readonly i18n = inject(I18nService);
+  readonly currentLanguage = this.i18n.currentLanguage;
+}
 

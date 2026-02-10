@@ -105,6 +105,11 @@ import {
       display: flex;
       flex-direction: column;
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      transition: background 0.3s ease;
+    }
+
+    :host-context(.light-theme) .game-container {
+      background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
     }
 
     .game-header {
@@ -114,6 +119,11 @@ import {
       padding: 1rem 2rem;
       background: rgba(0, 0, 0, 0.3);
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .game-header {
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom-color: #d1d5db;
     }
 
     .back-link {
@@ -135,11 +145,24 @@ import {
       }
     }
 
+    :host-context(.light-theme) .back-link {
+      color: #4b5563;
+
+      &:hover {
+        color: #111827;
+        background: rgba(0, 0, 0, 0.05);
+      }
+    }
+
     .game-title {
       font-size: 1.5rem;
       font-weight: 700;
       color: white;
       margin: 0;
+    }
+
+    :host-context(.light-theme) .game-title {
+      color: #111827;
     }
 
     .header-actions {
@@ -161,6 +184,13 @@ import {
         outline: 2px solid #4f46e5;
         outline-offset: 2px;
       }
+    }
+
+    :host-context(.light-theme) .difficulty-select,
+    :host-context(.light-theme) .time-select {
+      background: #ffffff;
+      border-color: #d1d5db;
+      color: #111827;
     }
 
     .action-btn {
@@ -240,6 +270,12 @@ import {
       font-size: 0.875rem;
     }
 
+    :host-context(.light-theme) .thinking-indicator {
+      background: #ffffff;
+      color: #4b5563;
+      border: 1px solid #e5e7eb;
+    }
+
     .spinner {
       width: 16px;
       height: 16px;
@@ -275,11 +311,20 @@ import {
       animation: slideUp 0.3s ease;
     }
 
+    :host-context(.light-theme) .modal-content {
+      background: #ffffff;
+      color: #111827;
+    }
+
     .modal-title {
       font-size: 1.75rem;
       font-weight: 700;
       color: white;
       margin: 0 0 1rem 0;
+    }
+
+    :host-context(.light-theme) .modal-title {
+      color: #111827;
     }
 
     .winner-text {
@@ -330,6 +375,21 @@ import {
       &:focus-visible {
         outline: 2px solid #4f46e5;
         outline-offset: 2px;
+      }
+    }
+
+    :host-context(.light-theme) .modal-btn {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+      color: #111827;
+
+      &:hover {
+        background: #e5e7eb;
+      }
+
+      &.primary {
+        background: #4f46e5;
+        color: white;
       }
     }
 

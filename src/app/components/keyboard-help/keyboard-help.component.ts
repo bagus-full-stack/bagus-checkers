@@ -121,6 +121,10 @@ import { KeyboardService } from '../../core/services/keyboard.service';
       animation: slideUp 0.2s ease;
     }
 
+    :host-context(.light-theme) .modal-content {
+      background: #ffffff;
+    }
+
     @keyframes slideUp {
       from {
         opacity: 0;
@@ -140,11 +144,19 @@ import { KeyboardService } from '../../core/services/keyboard.service';
       border-bottom: 1px solid #374151;
     }
 
+    :host-context(.light-theme) .modal-header {
+      border-bottom-color: #e5e7eb;
+    }
+
     .modal-header h2 {
       font-size: 1.25rem;
       font-weight: 700;
       color: white;
       margin: 0;
+    }
+
+    :host-context(.light-theme) .modal-header h2 {
+      color: #111827;
     }
 
     .close-btn {
@@ -162,9 +174,19 @@ import { KeyboardService } from '../../core/services/keyboard.service';
       transition: all 0.15s ease;
     }
 
+    :host-context(.light-theme) .close-btn {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
     .close-btn:hover {
       background: #4b5563;
       color: white;
+    }
+
+    :host-context(.light-theme) .close-btn:hover {
+      background: #e5e7eb;
+      color: #111827;
     }
 
     .shortcuts-container {
@@ -181,11 +203,19 @@ import { KeyboardService } from '../../core/services/keyboard.service';
       padding: 1rem;
     }
 
+    :host-context(.light-theme) .shortcut-section {
+      background: #f3f4f6;
+    }
+
     .section-title {
       font-size: 0.875rem;
       font-weight: 600;
       color: #9ca3af;
       margin: 0 0 0.75rem;
+    }
+
+    :host-context(.light-theme) .section-title {
+      color: #6b7280;
     }
 
     .shortcut-list {

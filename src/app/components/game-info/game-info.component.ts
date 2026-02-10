@@ -76,6 +76,13 @@ import { countPieces } from '../../core/models';
       background: #1f2937;
       border-radius: 0.5rem;
       color: white;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    :host-context(.light-theme) .info-container {
+      background: #ffffff;
+      color: #111827;
+      border: 1px solid #e5e7eb;
     }
 
     .player-section {
@@ -90,6 +97,15 @@ import { countPieces } from '../../core/models';
       &.active {
         background: #4f46e5;
         box-shadow: 0 0 12px rgba(79, 70, 229, 0.5);
+      }
+    }
+
+    :host-context(.light-theme) .player-section {
+      background: #f3f4f6;
+
+      &.active {
+        background: #4f46e5;
+        color: white;
       }
     }
 
@@ -124,6 +140,14 @@ import { countPieces } from '../../core/models';
       gap: 1rem;
       font-size: 0.875rem;
       color: #d1d5db;
+    }
+
+    :host-context(.light-theme) .piece-count {
+      color: #6b7280;
+    }
+
+    :host-context(.light-theme) .player-section.active .piece-count {
+      color: rgba(255, 255, 255, 0.8);
     }
 
     .game-status {
@@ -165,8 +189,16 @@ import { countPieces } from '../../core/models';
       font-size: 0.875rem;
     }
 
+    :host-context(.light-theme) .variant-info {
+      border-top-color: #e5e7eb;
+    }
+
     .variant-label {
       color: #9ca3af;
+    }
+
+    :host-context(.light-theme) .variant-label {
+      color: #6b7280;
     }
 
     .variant-name {

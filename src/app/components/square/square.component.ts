@@ -46,11 +46,11 @@ import { PieceComponent } from '../piece/piece.component';
       transition: background-color 0.15s ease;
 
       &.light {
-        background-color: #f0d9b5;
+        background-color: var(--board-light, #f0d9b5);
       }
 
       &.dark {
-        background-color: #b58863;
+        background-color: var(--board-dark, #b58863);
       }
 
       &.valid-target {
@@ -58,11 +58,11 @@ import { PieceComponent } from '../piece/piece.component';
       }
 
       &.valid-target:hover {
-        background-color: #7fc97f;
+        background-color: var(--board-valid-move, rgba(0, 128, 0, 0.5));
       }
 
       &:focus-visible {
-        outline: 3px solid #4f46e5;
+        outline: 3px solid var(--board-highlight, #4f46e5);
         outline-offset: -3px;
         z-index: 1;
       }
@@ -72,7 +72,7 @@ import { PieceComponent } from '../piece/piece.component';
       position: absolute;
       width: 30%;
       height: 30%;
-      background-color: rgba(0, 128, 0, 0.5);
+      background-color: var(--board-valid-move, rgba(0, 128, 0, 0.5));
       border-radius: 50%;
       pointer-events: none;
     }
@@ -81,7 +81,7 @@ import { PieceComponent } from '../piece/piece.component';
       width: 100%;
       height: 100%;
       background-color: transparent;
-      border: 4px solid rgba(0, 128, 0, 0.6);
+      border: 4px solid var(--board-valid-move, rgba(0, 128, 0, 0.6));
       border-radius: 0;
       box-sizing: border-box;
     }

@@ -153,6 +153,12 @@ import { RouterLink } from '@angular/router';
       min-height: 100vh;
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
       color: white;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    :host-context(.light-theme) .tutorial-container {
+      background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
+      color: #111827;
     }
 
     .tutorial-header {
@@ -162,6 +168,11 @@ import { RouterLink } from '@angular/router';
       padding: 1rem 2rem;
       background: rgba(0, 0, 0, 0.3);
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .tutorial-header {
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom-color: #d1d5db;
     }
 
     .back-link {
@@ -180,6 +191,15 @@ import { RouterLink } from '@angular/router';
       &:focus-visible {
         outline: 2px solid #4f46e5;
         outline-offset: 2px;
+      }
+    }
+
+    :host-context(.light-theme) .back-link {
+      color: #4b5563;
+
+      &:hover {
+        color: #111827;
+        background: rgba(0, 0, 0, 0.05);
       }
     }
 
@@ -237,6 +257,15 @@ import { RouterLink } from '@angular/router';
       &:focus-visible {
         outline: 2px solid #4f46e5;
         outline-offset: 2px;
+      }
+    }
+
+    :host-context(.light-theme) .nav-link {
+      color: #4b5563;
+
+      &:hover {
+        color: #111827;
+        background: rgba(0, 0, 0, 0.05);
       }
     }
 
@@ -317,12 +346,41 @@ import { RouterLink } from '@angular/router';
       }
     }
 
+    :host-context(.light-theme) .info-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-left: 4px solid #9ca3af;
+
+      p, ul {
+        color: #4b5563;
+      }
+
+      &.highlight {
+        border-left-color: #4f46e5;
+        background: rgba(79, 70, 229, 0.05);
+      }
+
+      &.warning {
+        border-left-color: #f59e0b;
+        background: rgba(245, 158, 11, 0.05);
+      }
+
+      &.success {
+        border-left-color: #10b981;
+        background: rgba(16, 185, 129, 0.05);
+      }
+    }
+
     .cta-section {
       display: flex;
       gap: 1rem;
       justify-content: center;
       padding-top: 2rem;
       border-top: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .cta-section {
+      border-top-color: #d1d5db;
     }
 
     .cta-btn {
@@ -351,6 +409,20 @@ import { RouterLink } from '@angular/router';
       &:focus-visible {
         outline: 2px solid #4f46e5;
         outline-offset: 2px;
+      }
+    }
+
+    :host-context(.light-theme) .cta-btn {
+      background: #e5e7eb;
+      color: #111827;
+
+      &:hover {
+        background: #d1d5db;
+      }
+
+      &.primary {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        color: white;
       }
     }
   `,

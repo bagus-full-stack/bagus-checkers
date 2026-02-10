@@ -156,6 +156,11 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
     .leaderboard-page {
       min-height: 100vh;
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      transition: background 0.3s ease;
+    }
+
+    :host-context(.light-theme) .leaderboard-page {
+      background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
     }
 
     .page-header {
@@ -165,6 +170,11 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
       padding: 1rem 2rem;
       background: rgba(0, 0, 0, 0.3);
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .page-header {
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom-color: #d1d5db;
     }
 
     .back-link {
@@ -181,11 +191,24 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
       background: rgba(255, 255, 255, 0.1);
     }
 
+    :host-context(.light-theme) .back-link {
+      color: #4b5563;
+    }
+
+    :host-context(.light-theme) .back-link:hover {
+      color: #111827;
+      background: rgba(0, 0, 0, 0.05);
+    }
+
     .page-title {
       font-size: 1.5rem;
       font-weight: 700;
       color: white;
       margin: 0;
+    }
+
+    :host-context(.light-theme) .page-title {
+      color: #111827;
     }
 
     .leaderboard-content {
@@ -201,6 +224,11 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
       border-radius: 1rem;
     }
 
+    :host-context(.light-theme) .empty-state {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+    }
+
     .empty-icon {
       font-size: 4rem;
       display: block;
@@ -212,9 +240,17 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
       margin: 0 0 0.5rem;
     }
 
+    :host-context(.light-theme) .empty-state h2 {
+      color: #111827;
+    }
+
     .empty-state p {
       color: #9ca3af;
       margin: 0 0 1.5rem;
+    }
+
+    :host-context(.light-theme) .empty-state p {
+      color: #6b7280;
     }
 
     .btn {
@@ -260,10 +296,19 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
       min-width: 120px;
     }
 
+    :host-context(.light-theme) .podium-place {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+    }
+
     .podium-place.first {
       padding-bottom: 2rem;
       background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
       border: 2px solid #ffd700;
+    }
+
+    :host-context(.light-theme) .podium-place.first {
+      background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%);
     }
 
     .podium-place.second {
@@ -316,6 +361,10 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
       margin-top: 0.25rem;
     }
 
+    :host-context(.light-theme) .podium-name {
+      color: #111827;
+    }
+
     .podium-rating {
       font-size: 1.25rem;
       font-weight: 700;
@@ -325,6 +374,11 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
       background: #1f2937;
       border-radius: 0.75rem;
       overflow: hidden;
+    }
+
+    :host-context(.light-theme) .table-section {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
     }
 
     .leaderboard-table {
@@ -346,8 +400,17 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
       letter-spacing: 0.05em;
     }
 
+    :host-context(.light-theme) .leaderboard-table th {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
     .leaderboard-table tr {
       border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .leaderboard-table tr {
+      border-bottom-color: #e5e7eb;
     }
 
     .leaderboard-table tr:last-child {
@@ -363,6 +426,10 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
       text-align: center;
       font-weight: 600;
       color: #9ca3af;
+    }
+
+    :host-context(.light-theme) .rank-cell {
+      color: #6b7280;
     }
 
     .player-cell {
@@ -398,6 +465,10 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
       font-weight: 500;
     }
 
+    :host-context(.light-theme) .player-name {
+      color: #111827;
+    }
+
     .rating-cell {
       font-weight: 700;
       font-size: 1rem;
@@ -405,6 +476,11 @@ import { RankingEntry, getRankColor } from '../../core/models/ranking.model';
 
     .games-cell, .winrate-cell {
       color: #9ca3af;
+    }
+
+    :host-context(.light-theme) .games-cell,
+    :host-context(.light-theme) .winrate-cell {
+      color: #6b7280;
     }
 
     .your-rank-banner {
