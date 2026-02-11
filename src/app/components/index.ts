@@ -9,3 +9,4 @@ export * from './game-over-modal/game-over-modal.component';
 export * from './replay-controls/replay-controls.component';
 export * from './player-card/player-card.component';
 export * from './keyboard-help/keyboard-help.component';
+export * from './game-analysis/game-analysis.component';

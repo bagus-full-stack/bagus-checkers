@@ -10,19 +10,20 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameEngineService, AiService, TimerService, ReplayService } from '../../core/services';
-import { AIDifficulty, TimeMode, TIME_MODES } from '../../core/models';
+import { AIDifficulty, TimeMode, TIME_MODES, PlayerColor } from '../../core/models';
 import {
   BoardComponent,
   MoveHistoryComponent,
   GameInfoComponent,
   GameTimerComponent,
   GameOverModalComponent,
+  GameAnalysisComponent,
 } from '../../components';
 
 @Component({
   selector: 'app-game-ai',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, BoardComponent, MoveHistoryComponent, GameInfoComponent, GameTimerComponent, GameOverModalComponent],
+  imports: [RouterLink, BoardComponent, MoveHistoryComponent, GameInfoComponent, GameTimerComponent, GameOverModalComponent, GameAnalysisComponent],
   template: `
     <div class="game-container">
       <header class="game-header">
@@ -31,6 +32,29 @@ import {
         </a>
         <h1 class="game-title">Contre l'IA</h1>
         <div class="header-actions">
+          <!-- Color selector -->
+          <div class="color-selector">
+            <span class="selector-label">Jouer:</span>
+            <button
+              type="button"
+              class="color-btn"
+              [class.active]="playerColor() === 'white'"
+              (click)="setPlayerColor('white')"
+              aria-label="Jouer les blancs"
+            >
+              ○ Blancs
+            </button>
+            <button
+              type="button"
+              class="color-btn"
+              [class.active]="playerColor() === 'black'"
+              (click)="setPlayerColor('black')"
+              aria-label="Jouer les noirs"
+            >
+              ● Noirs
+            </button>
+          </div>
+
           <select
             class="time-select"
             [value]="selectedTimeMode()"
@@ -50,6 +74,8 @@ import {
             <option value="easy">Facile</option>
             <option value="medium">Moyen</option>
             <option value="hard">Difficile</option>
+            <option value="expert">Expert</option>
+            <option value="master">Maître (MCTS)</option>
           </select>
           <button
             type="button"
@@ -62,9 +88,25 @@ import {
         </div>
       </header>
 
+      <!-- Current settings bar -->
+      <div class="settings-bar">
+        <div class="setting-item">
+          <span class="setting-icon">🎨</span>
+          <span class="setting-value">{{ playerColor() === 'white' ? 'Blancs' : 'Noirs' }}</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-icon">🤖</span>
+          <span class="setting-value">{{ getDifficultyLabel() }}</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-icon">⏱️</span>
+          <span class="setting-value">{{ getTimeModeLabel() }}</span>
+        </div>
+      </div>
+
       <main class="game-main">
         <aside class="sidebar left-sidebar">
-          <app-game-timer [player]="'black'" />
+          <app-game-timer [player]="topPlayer()" />
           <app-game-info />
 
           <div class="ai-status">
@@ -78,11 +120,11 @@ import {
         </aside>
 
         <section class="board-section" aria-label="Plateau de jeu">
-          <app-board />
+          <app-board [flipped]="playerColor() === 'black'" />
         </section>
 
         <aside class="sidebar right-sidebar">
-          <app-game-timer [player]="'white'" />
+          <app-game-timer [player]="bottomPlayer()" />
           <app-move-history />
         </aside>
       </main>
@@ -94,8 +136,18 @@ import {
           [stats]="gameStats()"
           (newGame)="newGame()"
           (saveReplay)="saveReplay()"
+          (analyze)="analyzeGame()"
           (close)="closeModal()"
         />
+      }
+
+      @if (showAnalysis()) {
+        <div class="analysis-backdrop" (click)="closeAnalysis()">
+          <app-game-analysis
+            [analysis]="gameAnalysis()"
+            (close)="closeAnalysis()"
+          />
+        </div>
       }
     </div>
   `,
@@ -169,6 +221,98 @@ import {
       display: flex;
       gap: 0.5rem;
       align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .color-selector {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: #374151;
+      padding: 0.25rem;
+      border-radius: 0.5rem;
+    }
+
+    :host-context(.light-theme) .color-selector {
+      background: #e5e7eb;
+    }
+
+    .selector-label {
+      padding: 0 0.5rem;
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+
+    :host-context(.light-theme) .selector-label {
+      color: #6b7280;
+    }
+
+    .color-btn {
+      padding: 0.375rem 0.75rem;
+      background: transparent;
+      border: none;
+      border-radius: 0.375rem;
+      color: #9ca3af;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      &.active {
+        background: #4f46e5;
+        color: white;
+      }
+    }
+
+    :host-context(.light-theme) .color-btn {
+      color: #6b7280;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.05);
+        color: #111827;
+      }
+
+      &.active {
+        background: #4f46e5;
+        color: white;
+      }
+    }
+
+    .settings-bar {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      padding: 0.5rem 1rem;
+      background: rgba(79, 70, 229, 0.1);
+      border-bottom: 1px solid rgba(79, 70, 229, 0.2);
+    }
+
+    :host-context(.light-theme) .settings-bar {
+      background: rgba(79, 70, 229, 0.05);
+    }
+
+    .setting-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .setting-icon {
+      font-size: 1rem;
+    }
+
+    .setting-value {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #a5b4fc;
+    }
+
+    :host-context(.light-theme) .setting-value {
+      color: #4f46e5;
     }
 
     .difficulty-select, .time-select {
@@ -408,6 +552,18 @@ import {
         transform: translateY(0);
       }
     }
+
+    .analysis-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      padding: 1rem;
+      animation: fadeIn 0.2s ease;
+    }
   `,
 })
 export class GameAiComponent implements OnInit, OnDestroy {
@@ -424,8 +580,23 @@ export class GameAiComponent implements OnInit, OnDestroy {
   readonly isAiThinking = signal(false);
   readonly selectedTimeMode = signal<TimeMode>('unlimited');
   readonly showModal = signal(true);
+  readonly showAnalysis = signal(false);
+  readonly gameAnalysis = this.aiService.lastAnalysis;
+  readonly playerColor = signal<PlayerColor>('white');
 
   readonly timeModes = Object.values(TIME_MODES);
+
+  readonly aiColor = computed((): PlayerColor =>
+    this.playerColor() === 'white' ? 'black' : 'white'
+  );
+
+  readonly topPlayer = computed((): PlayerColor =>
+    this.playerColor() === 'white' ? 'black' : 'white'
+  );
+
+  readonly bottomPlayer = computed((): PlayerColor =>
+    this.playerColor()
+  );
 
   readonly gameStats = computed(() => {
     if (this.status() !== 'finished') return undefined;
@@ -433,16 +604,16 @@ export class GameAiComponent implements OnInit, OnDestroy {
   });
 
   private aiTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private readonly playerColor = 'white';
-  private readonly aiColor = 'black';
+  private initialState: import('../../core/models').GameState | null = null;
 
   constructor() {
     // Watch for AI's turn
     effect(() => {
       const currentPlayer = this.currentPlayer();
       const status = this.status();
+      const aiColorValue = this.aiColor();
 
-      if (status === 'playing' && currentPlayer === this.aiColor) {
+      if (status === 'playing' && currentPlayer === aiColorValue) {
         this.playAiMove();
       }
     });
@@ -482,12 +653,55 @@ export class GameAiComponent implements OnInit, OnDestroy {
     }
     this.isAiThinking.set(false);
     this.showModal.set(true);
+    this.showAnalysis.set(false);
+    this.aiService.resetForNewGame();
     this.gameEngine.startNewGame(this.selectedTimeMode());
+    // Save initial state for analysis
+    this.initialState = this.gameEngine.gameState();
   }
 
   setDifficulty(event: Event): void {
     const target = event.target as HTMLSelectElement;
     this.difficulty.set(target.value as AIDifficulty);
+  }
+
+  setPlayerColor(color: PlayerColor): void {
+    if (this.playerColor() !== color) {
+      this.playerColor.set(color);
+      this.newGame();
+    }
+  }
+
+  getDifficultyLabel(): string {
+    const labels: Record<AIDifficulty, string> = {
+      easy: 'Facile',
+      medium: 'Moyen',
+      hard: 'Difficile',
+      expert: 'Expert',
+      master: 'Maître (MCTS)',
+    };
+    return labels[this.difficulty()];
+  }
+
+  getTimeModeLabel(): string {
+    const mode = this.timeModes.find(m => m.id === this.selectedTimeMode());
+    return mode?.name ?? 'Illimité';
+  }
+
+  analyzeGame(): void {
+    if (!this.initialState) return;
+
+    const state = this.gameEngine.gameState();
+    if (!state) return;
+
+    const moves = [...state.moveHistory];
+    this.aiService.analyzeGame(this.initialState, moves);
+    this.showModal.set(false);
+    this.showAnalysis.set(true);
+  }
+
+  closeAnalysis(): void {
+    this.showAnalysis.set(false);
   }
 
   saveReplay(): void {
@@ -523,7 +737,7 @@ export class GameAiComponent implements OnInit, OnDestroy {
     this.aiTimeoutId = setTimeout(() => {
       const move = this.aiService.getBestMove(
         state,
-        this.aiColor,
+        this.aiColor(),
         this.difficulty()
       );
 

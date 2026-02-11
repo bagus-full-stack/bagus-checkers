@@ -41,6 +41,7 @@ export const EN_TRANSLATIONS = {
   // Settings page
   'settings.title': 'Settings',
   'settings.backToHome': 'Back to home',
+  'settings.currentSettings': 'Current Settings',
   'settings.gameVariant': 'Game Variant',
   'settings.boardTheme': 'Board Theme',
   'settings.pieceStyle': 'Piece Style',

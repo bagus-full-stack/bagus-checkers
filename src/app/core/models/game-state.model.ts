@@ -22,7 +22,7 @@ export type GameMode = 'local' | 'ai' | 'online';
 /**
  * AI difficulty level
  */
-export type AIDifficulty = 'easy' | 'medium' | 'hard';
+export type AIDifficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'master';
 
 /**
  * Complete game state

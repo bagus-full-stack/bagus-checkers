@@ -18,6 +18,33 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
       </header>
 
       <main class="settings-main">
+        <!-- Current Settings Summary -->
+        <section class="current-settings-summary">
+          <h2 class="summary-title">{{ i18n.t('settings.currentSettings') }}</h2>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-icon">🌐</span>
+              <span class="summary-label">{{ i18n.t('settings.language') }}</span>
+              <span class="summary-value">{{ currentLanguage() === 'fr' ? 'Français' : 'English' }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-icon">🎮</span>
+              <span class="summary-label">{{ i18n.t('settings.gameVariant') }}</span>
+              <span class="summary-value">{{ getCurrentVariantName() }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-icon">🎨</span>
+              <span class="summary-label">{{ i18n.t('settings.boardTheme') }}</span>
+              <span class="summary-value">{{ getThemeName(selectedTheme()) }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-icon">⚫</span>
+              <span class="summary-label">{{ i18n.t('settings.pieceStyle') }}</span>
+              <span class="summary-value">{{ getPieceStyleName(selectedPieceStyle()) }}</span>
+            </div>
+          </div>
+        </section>
+
         <section class="settings-section" aria-labelledby="language-heading">
           <h2 id="language-heading" class="section-title">{{ i18n.t('settings.language') }}</h2>
           <div class="language-options" role="radiogroup" aria-labelledby="language-heading">
@@ -207,6 +234,74 @@ import { BOARD_THEMES, PIECE_STYLES, BoardTheme, PieceStyle } from '../../core/m
     :host-context(.light-theme) .settings-header {
       background: rgba(255, 255, 255, 0.9);
       border-bottom-color: #d1d5db;
+    }
+
+    .current-settings-summary {
+      background: rgba(79, 70, 229, 0.1);
+      border: 1px solid rgba(79, 70, 229, 0.3);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    :host-context(.light-theme) .current-settings-summary {
+      background: rgba(79, 70, 229, 0.05);
+    }
+
+    .summary-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #a5b4fc;
+      margin: 0 0 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    :host-context(.light-theme) .summary-title {
+      color: #4f46e5;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .summary-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 0.5rem;
+    }
+
+    :host-context(.light-theme) .summary-item {
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .summary-icon {
+      font-size: 1.25rem;
+    }
+
+    .summary-label {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      text-transform: uppercase;
+    }
+
+    :host-context(.light-theme) .summary-label {
+      color: #6b7280;
+    }
+
+    .summary-value {
+      margin-left: auto;
+      font-weight: 600;
+      color: white;
+    }
+
+    :host-context(.light-theme) .summary-value {
+      color: #111827;
     }
 
     .language-options {
@@ -633,6 +728,10 @@ export class SettingsComponent {
 
   isSelectedVariant(variantId: string): boolean {
     return this.selectedVariant().id === variantId;
+  }
+
+  getCurrentVariantName(): string {
+    return this.selectedVariant().name;
   }
 
   selectVariant(variantId: string): void {

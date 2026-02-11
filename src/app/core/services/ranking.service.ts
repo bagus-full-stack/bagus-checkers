@@ -89,11 +89,15 @@ export class RankingService {
   /**
    * Signs up with Supabase and creates profile
    */
-  async signUp(email: string, password: string, username: string): Promise<{ success: boolean; error?: string }> {
-    const { user, error } = await this.supabaseService.signUp(email, password, username);
+  async signUp(email: string, password: string, username: string): Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }> {
+    const { user, error, needsConfirmation } = await this.supabaseService.signUp(email, password, username);
 
     if (error) {
       return { success: false, error: error.message };
+    }
+
+    if (needsConfirmation) {
+      return { success: true, needsConfirmation: true };
     }
 
     if (user) {
@@ -121,6 +125,32 @@ export class RankingService {
     }
 
     return { success: false, error: 'Unknown error' };
+  }
+
+  /**
+   * Sends password reset email
+   */
+  async resetPassword(email: string): Promise<{ success: boolean; error?: string }> {
+    const { success, error } = await this.supabaseService.resetPassword(email);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success };
+  }
+
+  /**
+   * Resends confirmation email
+   */
+  async resendConfirmation(email: string): Promise<{ success: boolean; error?: string }> {
+    const { success, error } = await this.supabaseService.resendConfirmationEmail(email);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success };
   }
 
   /**
