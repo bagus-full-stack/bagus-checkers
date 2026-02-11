@@ -110,6 +110,14 @@ import { MaterialGraphComponent } from '../material-graph/material-graph.compone
           <button
             type="button"
             class="btn btn-outline"
+            (click)="analyze.emit()"
+          >
+            📊 Analyser
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-outline"
             (click)="saveReplay.emit()"
           >
             💾 Sauvegarder
@@ -382,6 +390,7 @@ export class GameOverModalComponent {
   readonly rematch = output<void>();
   readonly newGame = output<void>();
   readonly saveReplay = output<void>();
+  readonly analyze = output<void>();
   readonly close = output<void>();
 
   readonly titleText = computed(() => {

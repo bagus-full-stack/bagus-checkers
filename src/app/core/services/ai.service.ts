@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import {
   Piece,
   Move,
@@ -8,9 +8,21 @@ import {
 } from '../models';
 import { MoveValidatorService } from './move-validator.service';
 import { GameVariantService } from './game-variant.service';
+import {
+  MCTS,
+  openingBook,
+  transpositionTable,
+  GameAnalyzer,
+  GameAnalysis,
+  MoveAnalysis,
+} from '../ai';
+
+/** Extended difficulty levels */
+export type ExtendedDifficulty = AIDifficulty | 'expert' | 'master';
 
 /**
  * AI Service for computer opponents
+ * Now includes MCTS, transposition tables, opening book, and analysis
  */
 @Injectable({
   providedIn: 'root',
@@ -19,16 +31,70 @@ export class AiService {
   private readonly moveValidator = inject(MoveValidatorService);
   private readonly variantService = inject(GameVariantService);
 
+  /** Move counter for opening book */
+  private moveCount = 0;
+
+  /** MCTS instance */
+  private mcts: MCTS | null = null;
+
+  /** Last game analysis */
+  private readonly _lastAnalysis = signal<GameAnalysis | null>(null);
+  readonly lastAnalysis = this._lastAnalysis.asReadonly();
+
+  /** Transposition table stats */
+  readonly ttStats = signal({ size: 0, hits: 0, misses: 0, hitRate: 0 });
+
+  constructor() {
+    this.initMCTS();
+  }
+
+  /**
+   * Initialize MCTS with bound methods
+   */
+  private initMCTS(): void {
+    this.mcts = new MCTS(
+      (state, color) => this.getAllMoves(state, color),
+      (state, move) => this.applyMove(state, move),
+      (state, color) => this.evaluate(state, color),
+      {
+        maxIterations: 5000,
+        explorationConstant: 1.414,
+        maxSimulationDepth: 80,
+        timeLimit: 2000,
+      }
+    );
+  }
+
+  /**
+   * Resets the AI state for a new game
+   */
+  resetForNewGame(): void {
+    this.moveCount = 0;
+    openingBook.reset();
+    transpositionTable.clear();
+  }
+
   /**
    * Gets the best move for the AI at a given difficulty level
    */
   getBestMove(
     state: GameState,
     color: PlayerColor,
-    difficulty: AIDifficulty
+    difficulty: ExtendedDifficulty
   ): Move | null {
     const allMoves = this.getAllMoves(state, color);
     if (allMoves.length === 0) return null;
+
+    // Try opening book first (for medium+ difficulties)
+    if (difficulty !== 'easy' && this.moveCount < 8) {
+      const bookMove = this.getOpeningBookMove(state, color, allMoves);
+      if (bookMove) {
+        this.moveCount++;
+        return bookMove;
+      }
+    }
+
+    this.moveCount++;
 
     switch (difficulty) {
       case 'easy':
@@ -36,18 +102,53 @@ export class AiService {
       case 'medium':
         return this.getMinimaxMove(state, color, 3);
       case 'hard':
-        return this.getAlphaBetaMove(state, color, 5);
+        return this.getAlphaBetaWithTTMove(state, color, 5);
+      case 'expert':
+        return this.getAlphaBetaWithTTMove(state, color, 7);
+      case 'master':
+        return this.getMCTSMove(state, color);
       default:
         return this.getRandomMove(allMoves);
     }
   }
 
   /**
+   * Gets an opening book move if available
+   */
+  private getOpeningBookMove(
+    state: GameState,
+    color: PlayerColor,
+    validMoves: Move[]
+  ): Move | null {
+    const bookMove = openingBook.getBookMove(color, this.moveCount);
+    if (!bookMove) return null;
+
+    // Find the corresponding valid move
+    const matchingMove = validMoves.find(
+      m =>
+        m.from.row === bookMove.from.row &&
+        m.from.col === bookMove.from.col &&
+        m.to.row === bookMove.to.row &&
+        m.to.col === bookMove.to.col
+    );
+
+    if (matchingMove) {
+      openingBook.recordMove(matchingMove.from, matchingMove.to);
+      return matchingMove;
+    }
+
+    return null;
+  }
+
+  /**
    * Easy level: Random move selection
    */
   private getRandomMove(moves: Move[]): Move {
-    const index = Math.floor(Math.random() * moves.length);
-    return moves[index];
+    // Prefer captures if available
+    const captures = moves.filter(m => m.capturedPieces.length > 0);
+    const pool = captures.length > 0 ? captures : moves;
+    const index = Math.floor(Math.random() * pool.length);
+    return pool[index];
   }
 
   /**
@@ -78,9 +179,9 @@ export class AiService {
   }
 
   /**
-   * Hard level: Alpha-Beta pruning
+   * Hard/Expert level: Alpha-Beta with Transposition Table
    */
-  private getAlphaBetaMove(
+  private getAlphaBetaWithTTMove(
     state: GameState,
     color: PlayerColor,
     depth: number
@@ -88,14 +189,17 @@ export class AiService {
     const allMoves = this.getAllMoves(state, color);
     if (allMoves.length === 0) return null;
 
+    // Order moves for better pruning
+    const orderedMoves = this.orderMoves(state, allMoves);
+
     let bestMove: Move | null = null;
     let bestScore = -Infinity;
     let alpha = -Infinity;
     const beta = Infinity;
 
-    for (const move of allMoves) {
+    for (const move of orderedMoves) {
       const newState = this.applyMove(state, move);
-      const score = this.alphaBeta(newState, depth - 1, alpha, beta, false, color);
+      const score = this.alphaBetaWithTT(newState, depth - 1, alpha, beta, false, color);
 
       if (score > bestScore) {
         bestScore = score;
@@ -104,7 +208,55 @@ export class AiService {
       alpha = Math.max(alpha, bestScore);
     }
 
+    // Update stats
+    this.ttStats.set(transpositionTable.getStats());
+
     return bestMove;
+  }
+
+  /**
+   * Master level: Monte Carlo Tree Search
+   */
+  private getMCTSMove(state: GameState, color: PlayerColor): Move | null {
+    if (!this.mcts) {
+      this.initMCTS();
+    }
+    return this.mcts!.findBestMove(state, color);
+  }
+
+  /**
+   * Orders moves for better alpha-beta pruning
+   */
+  private orderMoves(state: GameState, moves: Move[]): Move[] {
+    // Check transposition table for best move
+    const ttBestMoveKey = transpositionTable.getBestMoveKey(state);
+
+    return moves.sort((a, b) => {
+      // TT best move first
+      if (ttBestMoveKey) {
+        const aKey = this.getMoveKey(a);
+        const bKey = this.getMoveKey(b);
+        if (aKey === ttBestMoveKey) return -1;
+        if (bKey === ttBestMoveKey) return 1;
+      }
+
+      // Then captures (more captures first)
+      const captureDiff = b.capturedPieces.length - a.capturedPieces.length;
+      if (captureDiff !== 0) return captureDiff;
+
+      // Then promotions
+      if (a.isPromotion && !b.isPromotion) return -1;
+      if (!a.isPromotion && b.isPromotion) return 1;
+
+      return 0;
+    });
+  }
+
+  /**
+   * Creates a unique key for a move
+   */
+  private getMoveKey(move: Move): string {
+    return `${move.from.row},${move.from.col}-${move.to.row},${move.to.col}`;
   }
 
   /**
@@ -149,9 +301,9 @@ export class AiService {
   }
 
   /**
-   * Alpha-Beta pruning algorithm
+   * Alpha-Beta with Transposition Table
    */
-  private alphaBeta(
+  private alphaBetaWithTT(
     state: GameState,
     depth: number,
     alpha: number,
@@ -159,45 +311,121 @@ export class AiService {
     isMaximizing: boolean,
     aiColor: PlayerColor
   ): number {
+    const alphaOrig = alpha;
+
+    // Check transposition table
+    const ttResult = transpositionTable.probe(state, depth, alpha, beta);
+    if (ttResult.valid) {
+      return ttResult.score;
+    }
+
     if (depth === 0 || this.isTerminal(state)) {
-      return this.evaluate(state, aiColor);
+      const score = this.evaluate(state, aiColor);
+      transpositionTable.set(state, depth, score, 'exact');
+      return score;
     }
 
     const currentColor = isMaximizing
       ? aiColor
       : this.oppositeColor(aiColor);
-    const moves = this.getAllMoves(state, currentColor);
+    const moves = this.orderMoves(state, this.getAllMoves(state, currentColor));
 
     if (moves.length === 0) {
-      return isMaximizing ? -1000 : 1000;
+      const score = isMaximizing ? -10000 + depth : 10000 - depth;
+      transpositionTable.set(state, depth, score, 'exact');
+      return score;
     }
 
+    let bestScore: number;
+    let bestMoveKey: string | undefined;
+
     if (isMaximizing) {
-      let maxScore = -Infinity;
+      bestScore = -Infinity;
       for (const move of moves) {
         const newState = this.applyMove(state, move);
-        const score = this.alphaBeta(newState, depth - 1, alpha, beta, false, aiColor);
-        maxScore = Math.max(maxScore, score);
+        const score = this.alphaBetaWithTT(newState, depth - 1, alpha, beta, false, aiColor);
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMoveKey = this.getMoveKey(move);
+        }
         alpha = Math.max(alpha, score);
         if (beta <= alpha) break;
       }
-      return maxScore;
     } else {
-      let minScore = Infinity;
+      bestScore = Infinity;
       for (const move of moves) {
         const newState = this.applyMove(state, move);
-        const score = this.alphaBeta(newState, depth - 1, alpha, beta, true, aiColor);
-        minScore = Math.min(minScore, score);
+        const score = this.alphaBetaWithTT(newState, depth - 1, alpha, beta, true, aiColor);
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestMoveKey = this.getMoveKey(move);
+        }
         beta = Math.min(beta, score);
         if (beta <= alpha) break;
       }
-      return minScore;
     }
+
+    // Store in transposition table
+    let flag: 'exact' | 'lowerbound' | 'upperbound';
+    if (bestScore <= alphaOrig) {
+      flag = 'upperbound';
+    } else if (bestScore >= beta) {
+      flag = 'lowerbound';
+    } else {
+      flag = 'exact';
+    }
+    transpositionTable.set(state, depth, bestScore, flag, bestMoveKey);
+
+    return bestScore;
   }
 
   /**
-   * Evaluates the board position for a given player
+   * Analyzes a completed game
    */
+  analyzeGame(initialState: GameState, moves: Move[]): GameAnalysis {
+    const analyzer = new GameAnalyzer({
+      depth: 4,
+      includeAlternatives: true,
+      evaluateFn: (state, color) => this.evaluate(state, color),
+      getAllMovesFn: (state, color) => this.getAllMoves(state, color),
+      applyMoveFn: (state, move) => this.applyMove(state, move),
+    });
+
+    const openingName = openingBook.getOpeningName() ?? undefined;
+    const analysis = analyzer.analyzeGame(initialState, moves, openingName);
+
+    this._lastAnalysis.set(analysis);
+    return analysis;
+  }
+
+  /**
+   * Gets analysis for a specific move
+   */
+  analyzeSingleMove(
+    state: GameState,
+    move: Move,
+    color: PlayerColor
+  ): MoveAnalysis {
+    const evalBefore = this.evaluate(state, color);
+    const newState = this.applyMove(state, move);
+    const evalAfter = this.evaluate(newState, color);
+
+    const allMoves = this.getAllMoves(state, color);
+    const bestMove = this.getAlphaBetaWithTTMove(state, color, 4);
+
+    return {
+      moveNumber: 0,
+      move,
+      player: color,
+      evaluation: evalAfter,
+      previousEvaluation: evalBefore,
+      evaluationChange: evalAfter - evalBefore,
+      classification: allMoves.length === 1 ? 'forced' : 'good',
+      suggestion: bestMove !== move ? bestMove ?? undefined : undefined,
+    };
+  }
   private evaluate(state: GameState, color: PlayerColor): number {
     const opponent = this.oppositeColor(color);
     let score = 0;

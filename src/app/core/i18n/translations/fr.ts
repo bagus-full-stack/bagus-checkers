@@ -41,6 +41,7 @@ export const FR_TRANSLATIONS = {
   // Settings page
   'settings.title': 'Paramètres',
   'settings.backToHome': 'Retour à l\'accueil',
+  'settings.currentSettings': 'Paramètres actuels',
   'settings.gameVariant': 'Variante de jeu',
   'settings.boardTheme': 'Thème du plateau',
   'settings.pieceStyle': 'Style des pions',

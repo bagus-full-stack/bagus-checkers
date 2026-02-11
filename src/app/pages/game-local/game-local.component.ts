@@ -51,6 +51,18 @@ import {
         </div>
       </header>
 
+      <!-- Current settings bar -->
+      <div class="settings-bar">
+        <div class="setting-item">
+          <span class="setting-icon">👥</span>
+          <span class="setting-value">Joueur vs Joueur</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-icon">⏱️</span>
+          <span class="setting-value">{{ getTimeModeLabel() }}</span>
+        </div>
+      </div>
+
       <main class="game-main">
         <aside class="sidebar left-sidebar">
           <app-game-timer [player]="'black'" />
@@ -189,6 +201,39 @@ import {
       background: #ffffff;
       border-color: #d1d5db;
       color: #111827;
+    }
+
+    .settings-bar {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      padding: 0.5rem 1rem;
+      background: rgba(79, 70, 229, 0.1);
+      border-bottom: 1px solid rgba(79, 70, 229, 0.2);
+    }
+
+    :host-context(.light-theme) .settings-bar {
+      background: rgba(79, 70, 229, 0.05);
+    }
+
+    .setting-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .setting-icon {
+      font-size: 1rem;
+    }
+
+    .setting-value {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #a5b4fc;
+    }
+
+    :host-context(.light-theme) .setting-value {
+      color: #4f46e5;
     }
 
     .game-main {
@@ -380,6 +425,11 @@ export class GameLocalComponent implements OnInit {
   onTimeModeChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     this.selectedTimeMode.set(target.value as TimeMode);
+  }
+
+  getTimeModeLabel(): string {
+    const mode = this.timeModes.find(m => m.id === this.selectedTimeMode());
+    return mode?.name ?? 'Illimité';
   }
 
   newGame(): void {

@@ -61,6 +61,10 @@ import { getRankTitle, getRankColor, calculateWinRate } from '../../core/models/
                   <div class="error-message">{{ authError() }}</div>
                 }
 
+                @if (authSuccess()) {
+                  <div class="success-message">{{ authSuccess() }}</div>
+                }
+
                 <div class="form-group">
                   <label for="email" class="form-label">Email</label>
                   <input
@@ -88,8 +92,24 @@ import { getRankTitle, getRankColor, calculateWinRate } from '../../core/models/
                   />
                 </div>
 
+                <button
+                  type="button"
+                  class="forgot-password-link"
+                  (click)="forgotPassword()"
+                >
+                  Mot de passe oublié ?
+                </button>
+
                 <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
                   {{ isLoading() ? 'Connexion...' : 'Se connecter' }}
+                </button>
+
+                <button
+                  type="button"
+                  class="resend-link"
+                  (click)="resendConfirmation()"
+                >
+                  Renvoyer l'email de confirmation
                 </button>
 
                 <div class="oauth-section">
@@ -115,6 +135,10 @@ import { getRankTitle, getRankColor, calculateWinRate } from '../../core/models/
 
                 @if (authError()) {
                   <div class="error-message">{{ authError() }}</div>
+                }
+
+                @if (authSuccess()) {
+                  <div class="success-message">{{ authSuccess() }}</div>
                 }
 
                 <div class="form-group">
@@ -434,6 +458,61 @@ import { getRankTitle, getRankColor, calculateWinRate } from '../../core/models/
       border-radius: 0.5rem;
       margin-bottom: 1rem;
       font-size: 0.875rem;
+    }
+
+    .success-message {
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid #22c55e;
+      color: #22c55e;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .forgot-password-link {
+      display: block;
+      width: 100%;
+      text-align: right;
+      background: none;
+      border: none;
+      color: #a5b4fc;
+      font-size: 0.875rem;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 1rem;
+      transition: color 0.15s ease;
+    }
+
+    .forgot-password-link:hover {
+      color: #818cf8;
+      text-decoration: underline;
+    }
+
+    :host-context(.light-theme) .forgot-password-link {
+      color: #4f46e5;
+    }
+
+    :host-context(.light-theme) .forgot-password-link:hover {
+      color: #4338ca;
+    }
+
+    .resend-link {
+      display: block;
+      text-align: center;
+      background: none;
+      border: none;
+      color: #a5b4fc;
+      font-size: 0.875rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      transition: color 0.15s ease;
+    }
+
+    .resend-link:hover {
+      color: #818cf8;
+      text-decoration: underline;
     }
 
     .oauth-section {
@@ -803,6 +882,7 @@ export class ProfileComponent {
   readonly editNameValue = signal('');
   readonly authMode = signal<'login' | 'register' | 'local'>('login');
   readonly authError = signal('');
+  readonly authSuccess = signal('');
   readonly isLoading = signal(false);
 
   readonly isUsernameValid = computed(() => {
@@ -843,6 +923,7 @@ export class ProfileComponent {
   async onSignIn(event: Event): Promise<void> {
     event.preventDefault();
     this.authError.set('');
+    this.authSuccess.set('');
     this.isLoading.set(true);
 
     const result = await this.rankingService.signIn(
@@ -853,13 +934,25 @@ export class ProfileComponent {
     this.isLoading.set(false);
 
     if (!result.success) {
-      this.authError.set(result.error ?? 'Erreur de connexion');
+      // Handle specific error messages
+      let errorMessage = result.error ?? 'Erreur de connexion';
+
+      if (errorMessage.includes('Invalid login credentials')) {
+        errorMessage = 'Email ou mot de passe incorrect.';
+      } else if (errorMessage.includes('Email not confirmed')) {
+        errorMessage = 'Veuillez confirmer votre email avant de vous connecter.';
+      } else if (errorMessage.includes('rate limit')) {
+        errorMessage = 'Trop de tentatives. Réessayez dans quelques minutes.';
+      }
+
+      this.authError.set(errorMessage);
     }
   }
 
   async onSignUp(event: Event): Promise<void> {
     event.preventDefault();
     this.authError.set('');
+    this.authSuccess.set('');
     this.isLoading.set(true);
 
     const result = await this.rankingService.signUp(
@@ -871,7 +964,24 @@ export class ProfileComponent {
     this.isLoading.set(false);
 
     if (!result.success) {
-      this.authError.set(result.error ?? 'Erreur d\'inscription');
+      // Handle specific error messages
+      let errorMessage = result.error ?? 'Erreur d\'inscription';
+
+      if (errorMessage.includes('already registered')) {
+        errorMessage = 'Cet email est déjà utilisé. Essayez de vous connecter.';
+      } else if (errorMessage.includes('valid email')) {
+        errorMessage = 'Veuillez entrer une adresse email valide.';
+      } else if (errorMessage.includes('password')) {
+        errorMessage = 'Le mot de passe doit contenir au moins 6 caractères.';
+      }
+
+      this.authError.set(errorMessage);
+    } else {
+      // Show success message for email confirmation
+      this.authSuccess.set('Inscription réussie ! Vérifiez votre email pour confirmer votre compte.');
+      this.emailInput.set('');
+      this.passwordInput.set('');
+      this.usernameInput.set('');
     }
   }
 
@@ -885,6 +995,49 @@ export class ProfileComponent {
 
   signInWithDiscord(): void {
     this.rankingService.signInWithProvider('discord');
+  }
+
+  async forgotPassword(): Promise<void> {
+    const email = this.emailInput();
+    if (!email) {
+      this.authError.set('Veuillez entrer votre adresse email.');
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.authError.set('');
+    this.authSuccess.set('');
+
+    const result = await this.rankingService.resetPassword(email);
+
+    this.isLoading.set(false);
+
+    if (result.success) {
+      this.authSuccess.set('Un email de réinitialisation a été envoyé à ' + email);
+    } else {
+      this.authError.set(result.error ?? 'Erreur lors de l\'envoi de l\'email.');
+    }
+  }
+
+  async resendConfirmation(): Promise<void> {
+    const email = this.emailInput();
+    if (!email) {
+      this.authError.set('Veuillez entrer votre adresse email.');
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.authError.set('');
+
+    const result = await this.rankingService.resendConfirmation(email);
+
+    this.isLoading.set(false);
+
+    if (result.success) {
+      this.authSuccess.set('Email de confirmation renvoyé à ' + email);
+    } else {
+      this.authError.set(result.error ?? 'Erreur lors de l\'envoi de l\'email.');
+    }
   }
 
   onCreateProfile(event: Event): void {

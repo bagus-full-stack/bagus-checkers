@@ -27,6 +27,7 @@ import { PlayerColor } from '../../core/models/piece.model';
         class="time-display"
         [class.low-time]="isLowTime()"
         [class.critical-time]="isCriticalTime()"
+        [class.unlimited]="isUnlimited()"
         [attr.aria-label]="'Temps restant: ' + formattedTime()"
       >
         {{ formattedTime() }}
@@ -120,6 +121,15 @@ import { PlayerColor } from '../../core/models/piece.model';
       animation: blink 0.5s infinite;
     }
 
+    .time-display.unlimited {
+      color: #9ca3af;
+      font-size: 1.25rem;
+    }
+
+    :host-context(.light-theme) .time-display.unlimited {
+      color: #6b7280;
+    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
@@ -136,6 +146,11 @@ export class GameTimerComponent {
 
   readonly player = input.required<PlayerColor>();
 
+  readonly isUnlimited = computed(() => {
+    const state = this.timerService.timerState();
+    return !state || state.mode === 'unlimited';
+  });
+
   readonly remainingTime = computed(() => {
     const state = this.timerService.timerState();
     if (!state) return 0;
@@ -148,18 +163,25 @@ export class GameTimerComponent {
     return state.activePlayer === this.player();
   });
 
-  readonly formattedTime = computed(() => formatTime(this.remainingTime()));
+  readonly formattedTime = computed(() => {
+    if (this.isUnlimited()) {
+      return '∞';
+    }
+    return formatTime(this.remainingTime());
+  });
 
   readonly playerLabel = computed(() =>
     this.player() === 'white' ? 'Blancs' : 'Noirs'
   );
 
   readonly isLowTime = computed(() => {
+    if (this.isUnlimited()) return false;
     const time = this.remainingTime();
     return time > 0 && time <= 60000 && time > 10000; // 10s - 60s
   });
 
   readonly isCriticalTime = computed(() => {
+    if (this.isUnlimited()) return false;
     const time = this.remainingTime();
     return time > 0 && time <= 10000; // < 10s
   });

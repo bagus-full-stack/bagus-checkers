@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   inject,
   computed,
+  input,
 } from '@angular/core';
 import { CdkDrag, CdkDragDrop, CdkDragPlaceholder, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import {
@@ -156,15 +157,22 @@ export class BoardComponent {
   private readonly gameEngine = inject(GameEngineService);
   private readonly variantService = inject(GameVariantService);
 
+  /** Whether the board is flipped (for playing as black) */
+  readonly flipped = input(false);
+
   readonly boardSize = this.variantService.boardSize;
 
-  readonly rows = computed(() =>
-    Array.from({ length: this.boardSize() }, (_, i) => i)
-  );
+  readonly rows = computed(() => {
+    const size = this.boardSize();
+    const arr = Array.from({ length: size }, (_, i) => i);
+    return this.flipped() ? arr : arr.slice().reverse();
+  });
 
-  readonly cols = computed(() =>
-    Array.from({ length: this.boardSize() }, (_, i) => i)
-  );
+  readonly cols = computed(() => {
+    const size = this.boardSize();
+    const arr = Array.from({ length: size }, (_, i) => i);
+    return this.flipped() ? arr.slice().reverse() : arr;
+  });
 
   readonly pieces = this.gameEngine.pieces;
   readonly selectedPiece = this.gameEngine.selectedPiece;

@@ -130,23 +130,32 @@ export class SupabaseService {
   /**
    * Sign up with email and password
    */
-  async signUp(email: string, password: string, username: string): Promise<{ user: User | null; error: Error | null }> {
-    if (!this.supabase) return { user: null, error: new Error('Supabase not initialized') };
+  async signUp(email: string, password: string, username: string): Promise<{ user: User | null; error: Error | null; needsConfirmation: boolean }> {
+    if (!this.supabase) return { user: null, error: new Error('Supabase not initialized'), needsConfirmation: false };
 
     const { data, error } = await this.supabase.auth.signUp({
       email,
       password,
       options: {
         data: { username },
+        emailRedirectTo: `${window.location.origin}/profile`,
       },
     });
 
-    if (data.user && !error) {
-      // Create user profile
+    if (error) {
+      return { user: null, error: error as Error, needsConfirmation: false };
+    }
+
+    // Check if email confirmation is needed
+    // If user is created but session is null, confirmation is needed
+    const needsConfirmation = data.user !== null && data.session === null;
+
+    if (data.user && data.session) {
+      // User is signed up and confirmed immediately (email confirmation disabled)
       await this.createUserProfile(data.user.id, username);
     }
 
-    return { user: data.user, error: error as Error | null };
+    return { user: data.user, error: null, needsConfirmation };
   }
 
   /**
@@ -161,6 +170,49 @@ export class SupabaseService {
     });
 
     return { user: data.user, error: error as Error | null };
+  }
+
+  /**
+   * Send password reset email
+   */
+  async resetPassword(email: string): Promise<{ success: boolean; error: Error | null }> {
+    if (!this.supabase) return { success: false, error: new Error('Supabase not initialized') };
+
+    const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/profile?reset=true`,
+    });
+
+    return { success: !error, error: error as Error | null };
+  }
+
+  /**
+   * Update password (for password reset)
+   */
+  async updatePassword(newPassword: string): Promise<{ success: boolean; error: Error | null }> {
+    if (!this.supabase) return { success: false, error: new Error('Supabase not initialized') };
+
+    const { error } = await this.supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    return { success: !error, error: error as Error | null };
+  }
+
+  /**
+   * Resend confirmation email
+   */
+  async resendConfirmationEmail(email: string): Promise<{ success: boolean; error: Error | null }> {
+    if (!this.supabase) return { success: false, error: new Error('Supabase not initialized') };
+
+    const { error } = await this.supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/profile`,
+      },
+    });
+
+    return { success: !error, error: error as Error | null };
   }
 
   /**
@@ -512,4 +564,3 @@ export class SupabaseService {
     return data ?? [];
   }
 }
-
