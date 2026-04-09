@@ -25,14 +25,29 @@ import { I18nService } from '../../core/services';
           </span>
         </a>
 
-        <!-- Additional placeholder buttons for future features -->
-        <button disabled class="menu-btn disabled-btn" title="Coming soon">
+        <a [routerLink]="['/game/local']" [queryParams]="{ variant: 'ludo' }" class="menu-btn">
           <span class="btn-icon" aria-hidden="true">👥</span>
           <span class="btn-text">
             <strong>{{ currentLanguage() === 'fr' ? 'Jouer en local' : 'Play Local' }}</strong>
-            <small>{{ currentLanguage() === 'fr' ? 'Prochainement' : 'Coming soon' }}</small>
+            <small>{{ currentLanguage() === 'fr' ? 'Multijoueur sur le mme crans' : 'Hotseat multiplayer' }}</small>
           </span>
-        </button>
+        </a>
+
+        <a [routerLink]="['/game/ai']" [queryParams]="{ variant: 'ludo' }" class="menu-btn">
+          <span class="btn-icon" aria-hidden="true">🤖</span>
+          <span class="btn-text">
+            <strong>{{ currentLanguage() === 'fr' ? 'Jouer contre l\\'IA' : 'Play vs AI' }}</strong>
+            <small>{{ currentLanguage() === 'fr' ? 'Entranez-vous' : 'Practice offline' }}</small>
+          </span>
+        </a>
+
+        <a [routerLink]="['/tutorial']" [queryParams]="{ variant: 'ludo' }" class="menu-btn secondary">
+          <span class="btn-icon" aria-hidden="true">📖</span>
+          <span class="btn-text">
+            <strong>{{ currentLanguage() === 'fr' ? 'Tutoriel Ludo' : 'Ludo Tutorial' }}</strong>
+            <small>{{ currentLanguage() === 'fr' ? 'Apprendre les rgles' : 'Learn the rules' }}</small>
+          </span>
+        </a>
 
         <a routerLink="/settings" class="menu-btn secondary">
           <span class="btn-icon" aria-hidden="true">⚙️</span>

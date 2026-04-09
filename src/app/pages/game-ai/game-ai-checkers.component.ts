@@ -1,0 +1,753 @@
+import {
+  Component,
+  ChangeDetectionStrategy,
+  inject,
+  OnInit,
+  OnDestroy,
+  signal,
+  effect,
+  computed,
+} from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { GameEngineService, AiService, TimerService, ReplayService } from '../../core/services';
+import { AIDifficulty, TimeMode, TIME_MODES, PlayerColor } from '../../core/models';
+import {
+  BoardComponent,
+  MoveHistoryComponent,
+  GameInfoComponent,
+  GameTimerComponent,
+  GameOverModalComponent,
+  GameAnalysisComponent,
+} from '../../components';
+
+@Component({
+  selector: 'app-game-ai-checkers',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterLink, BoardComponent, MoveHistoryComponent, GameInfoComponent, GameTimerComponent, GameOverModalComponent, GameAnalysisComponent],
+  template: `
+    <div class="game-container">
+      <header class="game-header">
+        <a routerLink="/" class="back-link" aria-label="Retour à l'accueil">
+          ← Accueil
+        </a>
+        <h1 class="game-title">Contre l'IA</h1>
+        <div class="header-actions">
+          <!-- Color selector -->
+          <div class="color-selector">
+            <span class="selector-label">Jouer:</span>
+            <button
+              type="button"
+              class="color-btn"
+              [class.active]="playerColor() === 'white'"
+              (click)="setPlayerColor('white')"
+              aria-label="Jouer les blancs"
+            >
+              ○ Blancs
+            </button>
+            <button
+              type="button"
+              class="color-btn"
+              [class.active]="playerColor() === 'black'"
+              (click)="setPlayerColor('black')"
+              aria-label="Jouer les noirs"
+            >
+              ● Noirs
+            </button>
+          </div>
+
+          <select
+            class="time-select"
+            [value]="selectedTimeMode()"
+            (change)="onTimeModeChange($event)"
+            aria-label="Mode de temps"
+          >
+            @for (mode of timeModes; track mode.id) {
+              <option [value]="mode.id">{{ mode.name }}</option>
+            }
+          </select>
+          <select
+            class="difficulty-select"
+            [value]="difficulty()"
+            (change)="setDifficulty($event)"
+            aria-label="Sélectionner la difficulté"
+          >
+            <option value="easy">Facile</option>
+            <option value="medium">Moyen</option>
+            <option value="hard">Difficile</option>
+            <option value="expert">Expert</option>
+            <option value="master">Maître (MCTS)</option>
+          </select>
+          <button
+            type="button"
+            class="action-btn"
+            (click)="newGame()"
+            aria-label="Nouvelle partie"
+          >
+            🔄 Nouvelle partie
+          </button>
+        </div>
+      </header>
+
+      <!-- Current settings bar -->
+      <div class="settings-bar">
+        <div class="setting-item">
+          <span class="setting-icon">🎨</span>
+          <span class="setting-value">{{ playerColor() === 'white' ? 'Blancs' : 'Noirs' }}</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-icon">🤖</span>
+          <span class="setting-value">{{ getDifficultyLabel() }}</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-icon">⏱️</span>
+          <span class="setting-value">{{ getTimeModeLabel() }}</span>
+        </div>
+      </div>
+
+      <main class="game-main">
+        <aside class="sidebar left-sidebar">
+          <app-game-timer [player]="topPlayer()" />
+          <app-game-info />
+
+          <div class="ai-status">
+            @if (isAiThinking()) {
+              <div class="thinking-indicator" role="status" aria-live="polite">
+                <span class="spinner" aria-hidden="true"></span>
+                L'IA réfléchit...
+              </div>
+            }
+          </div>
+        </aside>
+
+        <section class="board-section" aria-label="Plateau de jeu">
+          <app-board [flipped]="playerColor() === 'black'" />
+        </section>
+
+        <aside class="sidebar right-sidebar">
+          <app-game-timer [player]="bottomPlayer()" />
+          <app-move-history />
+        </aside>
+      </main>
+
+      @if (isGameOver()) {
+        <app-game-over-modal
+          [winner]="gameResult()?.winner ?? null"
+          [reason]="gameResult()?.reason"
+          [stats]="gameStats()"
+          (newGame)="newGame()"
+          (saveReplay)="saveReplay()"
+          (analyze)="analyzeGame()"
+          (close)="closeModal()"
+        />
+      }
+
+      @if (showAnalysis()) {
+        <div class="analysis-backdrop" (click)="closeAnalysis()">
+          <app-game-analysis
+            [analysis]="gameAnalysis()"
+            (close)="closeAnalysis()"
+          />
+        </div>
+      }
+    </div>
+  `,
+  styles: `
+    .game-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      transition: background 0.3s ease;
+    }
+
+    :host-context(.light-theme) .game-container {
+      background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
+    }
+
+    .game-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(0, 0, 0, 0.3);
+      border-bottom: 1px solid #374151;
+    }
+
+    :host-context(.light-theme) .game-header {
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom-color: #d1d5db;
+    }
+
+    .back-link {
+      color: #9ca3af;
+      text-decoration: none;
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      transition: all 0.15s ease;
+
+      &:hover {
+        color: white;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      &:focus-visible {
+        outline: 2px solid #4f46e5;
+        outline-offset: 2px;
+      }
+    }
+
+    :host-context(.light-theme) .back-link {
+      color: #4b5563;
+
+      &:hover {
+        color: #111827;
+        background: rgba(0, 0, 0, 0.05);
+      }
+    }
+
+    .game-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: white;
+      margin: 0;
+    }
+
+    :host-context(.light-theme) .game-title {
+      color: #111827;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .color-selector {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: #374151;
+      padding: 0.25rem;
+      border-radius: 0.5rem;
+    }
+
+    :host-context(.light-theme) .color-selector {
+      background: #e5e7eb;
+    }
+
+    .selector-label {
+      padding: 0 0.5rem;
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+
+    :host-context(.light-theme) .selector-label {
+      color: #6b7280;
+    }
+
+    .color-btn {
+      padding: 0.375rem 0.75rem;
+      background: transparent;
+      border: none;
+      border-radius: 0.375rem;
+      color: #9ca3af;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      &.active {
+        background: #4f46e5;
+        color: white;
+      }
+    }
+
+    :host-context(.light-theme) .color-btn {
+      color: #6b7280;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.05);
+        color: #111827;
+      }
+
+      &.active {
+        background: #4f46e5;
+        color: white;
+      }
+    }
+
+    .settings-bar {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      padding: 0.5rem 1rem;
+      background: rgba(79, 70, 229, 0.1);
+      border-bottom: 1px solid rgba(79, 70, 229, 0.2);
+    }
+
+    :host-context(.light-theme) .settings-bar {
+      background: rgba(79, 70, 229, 0.05);
+    }
+
+    .setting-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .setting-icon {
+      font-size: 1rem;
+    }
+
+    .setting-value {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #a5b4fc;
+    }
+
+    :host-context(.light-theme) .setting-value {
+      color: #4f46e5;
+    }
+
+    .difficulty-select, .time-select {
+      padding: 0.5rem 1rem;
+      background: #374151;
+      border: 1px solid #4b5563;
+      border-radius: 0.375rem;
+      color: white;
+      font-size: 0.875rem;
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: 2px solid #4f46e5;
+        outline-offset: 2px;
+      }
+    }
+
+    :host-context(.light-theme) .difficulty-select,
+    :host-context(.light-theme) .time-select {
+      background: #ffffff;
+      border-color: #d1d5db;
+      color: #111827;
+    }
+
+    .action-btn {
+      padding: 0.5rem 1rem;
+      background: #4f46e5;
+      border: none;
+      border-radius: 0.375rem;
+      color: white;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+
+      &:hover {
+        background: #4338ca;
+      }
+
+      &:focus-visible {
+        outline: 2px solid white;
+        outline-offset: 2px;
+      }
+    }
+
+    .game-main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 280px 1fr 280px;
+      gap: 2rem;
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+
+      @media (max-width: 1200px) {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+
+      @media (max-width: 1200px) {
+        order: 2;
+      }
+    }
+
+    .board-section {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+
+      @media (max-width: 1200px) {
+        order: 1;
+      }
+    }
+
+    .right-sidebar {
+      @media (max-width: 1200px) {
+        order: 3;
+      }
+    }
+
+    .ai-status {
+      min-height: 48px;
+    }
+
+    .thinking-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: #374151;
+      border-radius: 0.5rem;
+      color: #d1d5db;
+      font-size: 0.875rem;
+    }
+
+    :host-context(.light-theme) .thinking-indicator {
+      background: #ffffff;
+      color: #4b5563;
+      border: 1px solid #e5e7eb;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #6b7280;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .game-over-modal {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 100;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal-content {
+      background: #1f2937;
+      border-radius: 1rem;
+      padding: 2rem;
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+      animation: slideUp 0.3s ease;
+    }
+
+    :host-context(.light-theme) .modal-content {
+      background: #ffffff;
+      color: #111827;
+    }
+
+    .modal-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: white;
+      margin: 0 0 1rem 0;
+    }
+
+    :host-context(.light-theme) .modal-title {
+      color: #111827;
+    }
+
+    .winner-text {
+      font-size: 1.125rem;
+      color: #9ca3af;
+      margin: 0 0 2rem 0;
+
+      &.victory {
+        color: #10b981;
+      }
+
+      &.defeat {
+        color: #ef4444;
+      }
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .modal-btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      background: #374151;
+      border: 1px solid #4b5563;
+      color: white;
+
+      &:hover {
+        background: #4b5563;
+      }
+
+      &.primary {
+        background: #4f46e5;
+        border-color: #4f46e5;
+
+        &:hover {
+          background: #4338ca;
+        }
+      }
+
+      &:focus-visible {
+        outline: 2px solid #4f46e5;
+        outline-offset: 2px;
+      }
+    }
+
+    :host-context(.light-theme) .modal-btn {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+      color: #111827;
+
+      &:hover {
+        background: #e5e7eb;
+      }
+
+      &.primary {
+        background: #4f46e5;
+        color: white;
+      }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .analysis-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      padding: 1rem;
+      animation: fadeIn 0.2s ease;
+    }
+  `,
+})
+export class GameAiCheckersComponent implements OnInit, OnDestroy {
+  private readonly gameEngine = inject(GameEngineService);
+  private readonly aiService = inject(AiService);
+  private readonly timerService = inject(TimerService);
+  private readonly replayService = inject(ReplayService);
+
+  readonly gameResult = this.gameEngine.gameResult;
+  readonly status = this.gameEngine.status;
+  readonly currentPlayer = this.gameEngine.currentPlayer;
+
+  readonly difficulty = signal<AIDifficulty>('medium');
+  readonly isAiThinking = signal(false);
+  readonly selectedTimeMode = signal<TimeMode>('unlimited');
+  readonly showModal = signal(true);
+  readonly showAnalysis = signal(false);
+  readonly gameAnalysis = this.aiService.lastAnalysis;
+  readonly playerColor = signal<PlayerColor>('white');
+
+  readonly timeModes = Object.values(TIME_MODES);
+
+  readonly aiColor = computed((): PlayerColor =>
+    this.playerColor() === 'white' ? 'black' : 'white'
+  );
+
+  readonly topPlayer = computed((): PlayerColor =>
+    this.playerColor() === 'white' ? 'black' : 'white'
+  );
+
+  readonly bottomPlayer = computed((): PlayerColor =>
+    this.playerColor()
+  );
+
+  readonly gameStats = computed(() => {
+    if (this.status() !== 'finished') return undefined;
+    return this.gameEngine.getGameStatistics() ?? undefined;
+  });
+
+  private aiTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private initialState: import('../../core/models').GameState | null = null;
+
+  constructor() {
+    // Watch for AI's turn
+    effect(() => {
+      const currentPlayer = this.currentPlayer();
+      const status = this.status();
+      const aiColorValue = this.aiColor();
+
+      if (status === 'playing' && currentPlayer === aiColorValue) {
+        this.playAiMove();
+      }
+    });
+
+    // Watch for timeout
+    effect(() => {
+      const timedOut = this.timerService.timedOutPlayer();
+      if (timedOut) {
+        this.gameEngine.handleTimeout(timedOut);
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    this.newGame();
+  }
+
+  ngOnDestroy(): void {
+    if (this.aiTimeoutId) {
+      clearTimeout(this.aiTimeoutId);
+    }
+    this.timerService.stopTimer();
+  }
+
+  isGameOver(): boolean {
+    return this.status() === 'finished' && this.showModal();
+  }
+
+  onTimeModeChange(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    this.selectedTimeMode.set(target.value as TimeMode);
+  }
+
+  newGame(): void {
+    if (this.aiTimeoutId) {
+      clearTimeout(this.aiTimeoutId);
+    }
+    this.isAiThinking.set(false);
+    this.showModal.set(true);
+    this.showAnalysis.set(false);
+    this.aiService.resetForNewGame();
+    this.gameEngine.startNewGame(this.selectedTimeMode());
+    // Save initial state for analysis
+    this.initialState = this.gameEngine.gameState();
+  }
+
+  setDifficulty(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    this.difficulty.set(target.value as AIDifficulty);
+  }
+
+  setPlayerColor(color: PlayerColor): void {
+    if (this.playerColor() !== color) {
+      this.playerColor.set(color);
+      this.newGame();
+    }
+  }
+
+  getDifficultyLabel(): string {
+    const labels: Record<AIDifficulty, string> = {
+      easy: 'Facile',
+      medium: 'Moyen',
+      hard: 'Difficile',
+      expert: 'Expert',
+      master: 'Maître (MCTS)',
+    };
+    return labels[this.difficulty()];
+  }
+
+  getTimeModeLabel(): string {
+    const mode = this.timeModes.find(m => m.id === this.selectedTimeMode());
+    return mode?.name ?? 'Illimité';
+  }
+
+  analyzeGame(): void {
+    if (!this.initialState) return;
+
+    const state = this.gameEngine.gameState();
+    if (!state) return;
+
+    const moves = [...state.moveHistory];
+    this.aiService.analyzeGame(this.initialState, moves);
+    this.showModal.set(false);
+    this.showAnalysis.set(true);
+  }
+
+  closeAnalysis(): void {
+    this.showAnalysis.set(false);
+  }
+
+  saveReplay(): void {
+    const stats = this.gameStats();
+    const result = this.gameResult();
+    if (!stats) return;
+
+    this.replayService.saveGame(
+      this.gameEngine.gameState()?.moveHistory ?? [],
+      this.gameEngine.getMaterialHistory(),
+      'Vous',
+      'IA (' + this.difficulty() + ')',
+      result?.winner ?? null,
+      result?.reason ?? '',
+      'Dames Internationales',
+      stats.duration
+    );
+
+    alert('Partie sauvegardée !');
+  }
+
+  closeModal(): void {
+    this.showModal.set(false);
+  }
+
+  private playAiMove(): void {
+    const state = this.gameEngine.gameState();
+    if (!state || state.status !== 'playing') return;
+
+    this.isAiThinking.set(true);
+
+    // Add a small delay for better UX
+    this.aiTimeoutId = setTimeout(() => {
+      const move = this.aiService.getBestMove(
+        state,
+        this.aiColor(),
+        this.difficulty()
+      );
+
+      if (move) {
+        this.gameEngine.selectPiece(move.piece);
+        this.gameEngine.executeMove(move);
+      }
+
+      this.isAiThinking.set(false);
+    }, 500);
+  }
+}
+
