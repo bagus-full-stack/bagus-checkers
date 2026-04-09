@@ -58,7 +58,7 @@ export interface TimerState {
   readonly mode: TimeMode;
   readonly white: PlayerTimer;
   readonly black: PlayerTimer;
-  readonly activePlayer: 'white' | 'black' | null;
+  readonly activePlayer: string | null;
   readonly lastUpdateTimestamp: number;
 }
 
@@ -88,4 +88,3 @@ export function formatTime(ms: number): string {
   const seconds = totalSeconds % 60;
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
-

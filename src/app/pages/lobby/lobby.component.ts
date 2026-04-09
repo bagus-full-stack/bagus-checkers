@@ -6,7 +6,7 @@ import {
   OnInit,
   OnDestroy,
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { OnlineService } from '../../core/services';
 import { GameRoom } from '../../core/models';
@@ -71,6 +71,23 @@ import { GameRoom } from '../../core/models';
             <section class="create-room-section" aria-labelledby="create-heading">
               <h2 id="create-heading" class="section-title">Créer une partie</h2>
               <form (submit)="createRoom($event)" class="create-form">
+                <div class="form-group">
+                  <label for="variantSelect" class="form-label">Jeu</label>
+                  <select id="variantSelect" [(ngModel)]="selectedVariant" name="variant" class="form-input">
+                    <option value="international">Dames (International)</option>
+                    <option value="ludo">Ludo</option>
+                  </select>
+                </div>
+                <!-- Optional Checkers Options -->
+                @if (selectedVariant() !== 'ludo') {
+                  <div class="form-group">
+                    <label for="layoutSelect" class="form-label">Disposition initiale</label>
+                    <select id="layoutSelect" [(ngModel)]="selectedLayout" name="layout" class="form-input">
+                      <option value="classic">Classique</option>
+                      <option value="random">Aléatoire (960)</option>
+                    </select>
+                  </div>
+                }
                 <div class="form-group">
                   <label for="roomName" class="form-label">Nom de la salle</label>
                   <input
@@ -493,6 +510,7 @@ import { GameRoom } from '../../core/models';
 export class LobbyComponent implements OnInit, OnDestroy {
   private readonly onlineService = inject(OnlineService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly connectionStatus = this.onlineService.connectionStatus;
   readonly isConnected = this.onlineService.isConnected;
@@ -504,10 +522,17 @@ export class LobbyComponent implements OnInit, OnDestroy {
   readonly playerName = signal('');
   readonly roomName = signal('');
   readonly isPrivate = signal(false);
+  selectedVariant = signal('international');
+  selectedLayout = signal<'classic' | 'random'>('classic');
 
   private roomCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
+    const variantParam = this.route.snapshot.queryParamMap.get('variant');
+    if (variantParam === 'ludo') {
+      this.selectedVariant.set('ludo');
+    }
+
     // Auto-refresh rooms when connected
     if (this.isConnected()) {
       this.startRoomRefresh();
@@ -563,7 +588,15 @@ export class LobbyComponent implements OnInit, OnDestroy {
   createRoom(event: Event): void {
     event.preventDefault();
     const name = this.roomName().trim() || `Partie de ${this.currentPlayer()?.name}`;
-    this.onlineService.createRoom(name, this.isPrivate());
+
+    // Add layout for checkers if applicable
+    const variantStr = this.selectedVariant();
+    const layoutStr = variantStr !== 'ludo' ? this.selectedLayout() : undefined;
+
+    // Fall back to original method to avoid private socket access
+    // We update the original method inside online.service.ts instead
+    this.onlineService.createRoom(name, this.isPrivate(), variantStr, layoutStr);
+
     this.roomName.set('');
 
     // Navigate to game when room is created
@@ -604,4 +637,3 @@ export class LobbyComponent implements OnInit, OnDestroy {
     }
   }
 }
-

@@ -149,7 +149,7 @@ export class TimerService {
     const state = this._timerState();
     if (!state || !state.activePlayer) return;
 
-    this.startTimer(state.activePlayer);
+    this.startTimer(state.activePlayer as PlayerColor);
   }
 
   /**
@@ -226,4 +226,3 @@ export class TimerService {
     });
   }
 }
-

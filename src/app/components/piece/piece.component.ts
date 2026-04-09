@@ -19,6 +19,9 @@ import { Piece } from '../../core/models';
     @if (piece().type === 'king') {
       <span class="crown" aria-hidden="true">♔</span>
     }
+    @if (piece().type === 'token') {
+      <span class="token-inner" aria-hidden="true"></span>
+    }
   `,
   styles: `
     :host {
@@ -84,6 +87,26 @@ import { Piece } from '../../core/models';
       }
     }
 
+    &.red {
+      background: radial-gradient(145deg, #fca5a5, #b91c1c);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    }
+
+    &.blue {
+      background: radial-gradient(145deg, #93c5fd, #1d4ed8);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    }
+
+    &.yellow {
+      background: radial-gradient(145deg, #fde047, #b45309);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    }
+
+    &.green {
+      background: radial-gradient(145deg, #86efac, #15803d);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    }
+
     .crown {
       font-size: 1.5rem;
       position: absolute;
@@ -98,6 +121,19 @@ import { Piece } from '../../core/models';
 
     :host.black .crown {
       color: #ffd700;
+    }
+
+    .token-inner {
+      display: block;
+      width: 40%;
+      height: 40%;
+      border-radius: 50%;
+      background: rgba(255,255,255, 0.5);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 
     @keyframes pulse {
@@ -135,4 +171,3 @@ export class PieceComponent {
     return `${type} ${color}`;
   });
 }
-

@@ -110,7 +110,7 @@ export class ReplayService {
         black_player_id: blackPlayerId,
         white_player_name: whitePlayer,
         black_player_name: blackPlayer,
-        winner: winner,
+        winner: winner as 'white' | 'black' | 'draw' | null,
         reason: reason,
         variant: variant,
         total_moves: moves.length,
