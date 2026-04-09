@@ -86,13 +86,14 @@ export function countPieces(state: GameState): {
   };
 
   for (const piece of state.pieces) {
-    if (piece.type === 'pawn') {
-      result[piece.color].pawns++;
-    } else {
-      result[piece.color].kings++;
+    if (piece.color === 'white' || piece.color === 'black') {
+      if (piece.type === 'pawn') {
+        result[piece.color].pawns++;
+      } else if (piece.type === 'king') {
+        result[piece.color].kings++;
+      }
     }
   }
 
   return result;
 }
-

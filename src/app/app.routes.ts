@@ -4,7 +4,21 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () =>
+      import('./pages/selection/selection.component').then(
+        (m) => m.SelectionComponent
+      ),
+  },
+  {
+    path: 'checkers',
+    loadComponent: () =>
       import('./pages/home/home.component').then((m) => m.HomeComponent),
+  },
+  {
+    path: 'ludo',
+    loadComponent: () =>
+      import('./pages/ludo-home/ludo-home.component').then(
+        (m) => m.LudoHomeComponent
+      ),
   },
   {
     path: 'game/local',

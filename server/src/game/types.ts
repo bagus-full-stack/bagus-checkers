@@ -1,4 +1,4 @@
-export type PlayerColor = 'white' | 'black';
+export type PlayerColor = 'white' | 'black' | 'red' | 'blue' | 'yellow' | 'green';
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'finished';
 
 export interface OnlinePlayer {
@@ -18,8 +18,11 @@ export interface GameRoom {
   status: RoomStatus;
   createdAt: number;
   isPrivate: boolean;
-  variant: string;
+  variant: string; // 'checkers' | 'ludo' or any variant
+  layout?: 'classic' | 'random';
   gameState?: unknown;
+  maxPlayers?: number;
+  players?: OnlinePlayer[]; // generalized list of players
 }
 
 export interface Position {
@@ -30,7 +33,7 @@ export interface Position {
 export interface Piece {
   id: string;
   color: PlayerColor;
-  type: 'pawn' | 'king';
+  type: 'pawn' | 'king' | 'token';
   position: Position;
 }
 
@@ -49,4 +52,3 @@ export interface ChatMessage {
   message: string;
   timestamp: number;
 }
-

@@ -9,6 +9,9 @@ import { I18nService } from '../../core/services';
   template: `
     <div class="home-container">
       <header class="hero">
+        <a routerLink="/" class="back-link" aria-label="Retour  la slection">
+          ← Selection / Menu
+        </a>
         <h1 class="title">{{ i18n.t('home.title') }}</h1>
         <p class="subtitle">{{ i18n.t('home.subtitle') }}</p>
       </header>
@@ -93,6 +96,34 @@ import { I18nService } from '../../core/services';
 
     :host-context(.light-theme) .home-container {
       background: linear-gradient(135deg, #c7d2fe 0%, #e0e7ff 50%, #c7d2fe 100%);
+    }
+
+    .back-link {
+      position: absolute;
+      top: 1.5rem;
+      left: 1.5rem;
+      color: #c7d2fe;
+      text-decoration: none;
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      transition: all 0.15s ease;
+      background: rgba(255, 255, 255, 0.1);
+
+      &:hover {
+        color: white;
+        background: rgba(255, 255, 255, 0.2);
+      }
+    }
+
+    :host-context(.light-theme) .back-link {
+      color: #4338ca;
+      background: rgba(0, 0, 0, 0.05);
+
+      &:hover {
+        color: #1e1b4b;
+        background: rgba(0, 0, 0, 0.1);
+      }
     }
 
     .hero {

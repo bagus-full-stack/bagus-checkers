@@ -11,14 +11,21 @@ export class RoomService {
     host: OnlinePlayer,
     name: string,
     isPrivate: boolean,
-    variant: string
+    variant: string,
+    layout?: 'classic' | 'random',
   ): GameRoom {
     const roomId = uuidv4().slice(0, 8).toUpperCase();
+    const isLudo = variant === 'ludo';
+    const initialColor = isLudo ? 'red' : 'white';
+
+    const hostPlayerObj = { ...host, color: initialColor as any, isReady: false };
 
     const room: GameRoom = {
       id: roomId,
       name: name || `Partie de ${host.name}`,
-      hostPlayer: { ...host, color: 'white', isReady: false },
+      hostPlayer: hostPlayerObj,
+      players: [hostPlayerObj],
+      maxPlayers: isLudo ? 4 : 2,
       status: 'waiting',
       createdAt: Date.now(),
       isPrivate,
@@ -34,10 +41,28 @@ export class RoomService {
   joinRoom(roomId: string, player: OnlinePlayer): GameRoom | null {
     const room = this.rooms.get(roomId);
     if (!room) return null;
-    if (room.guestPlayer) return null; // Room is full
+
+    const maxPlayers = room.variant === 'ludo' ? 4 : 2;
+    if ((room.players?.length || 1) >= maxPlayers) return null; // Room is full
     if (room.status !== 'waiting') return null;
 
-    room.guestPlayer = { ...player, color: 'black', isReady: false };
+    if (room.variant === 'ludo') {
+      const colors = ['red', 'green', 'yellow', 'blue'];
+      const assignedColor = colors[room.players?.length || 1];
+      const newPlayer = { ...player, color: assignedColor as any, isReady: false };
+
+      if (!room.players) room.players = [room.hostPlayer];
+      room.players.push(newPlayer);
+
+      // Fallback for types/checkers compatibility
+      if (!room.guestPlayer) room.guestPlayer = newPlayer;
+    } else {
+      if (room.guestPlayer) return null; // Defensive check for checkers
+      const newPlayer = { ...player, color: 'black' as any, isReady: false };
+      room.guestPlayer = newPlayer;
+      room.players = [room.hostPlayer, newPlayer];
+    }
+
     this.playerRooms.set(player.id, roomId);
 
     return room;
@@ -55,18 +80,38 @@ export class RoomService {
     const wasHost = room.hostPlayer.id === playerId;
 
     if (wasHost) {
-      // Host left - if guest exists, promote them to host
-      if (room.guestPlayer) {
-        room.hostPlayer = { ...room.guestPlayer, color: 'white' };
-        room.guestPlayer = undefined;
-        room.status = 'waiting';
+      if (room.variant === 'ludo') {
+        const remainingPlayers = room.players?.filter(p => p.id !== playerId) || [];
+        if (remainingPlayers.length > 0) {
+          room.hostPlayer = remainingPlayers[0];
+          room.players = remainingPlayers;
+          // Reassign fallback
+          room.guestPlayer = remainingPlayers[1];
+        } else {
+          this.rooms.delete(roomId);
+        }
       } else {
-        // No one left, delete room
-        this.rooms.delete(roomId);
+        // Checkers logic: Host left - if guest exists, promote them to host
+        if (room.guestPlayer) {
+          room.hostPlayer = { ...room.guestPlayer, color: 'white' as any };
+          room.players = [room.hostPlayer];
+          room.guestPlayer = undefined;
+          room.status = 'waiting';
+        } else {
+          // No one left, delete room
+          this.rooms.delete(roomId);
+        }
       }
     } else {
-      // Guest left
-      room.guestPlayer = undefined;
+      // Guest/Other player left
+      if (room.variant === 'ludo') {
+        room.players = room.players?.filter(p => p.id !== playerId);
+        // Re-determine guestPlayer fallback
+        room.guestPlayer = room.players?.find(p => p.id !== room.hostPlayer.id);
+      } else {
+        room.guestPlayer = undefined;
+        room.players = [room.hostPlayer];
+      }
       room.status = 'waiting';
     }
 
@@ -93,21 +138,37 @@ export class RoomService {
     const room = this.getRoomByPlayerId(playerId);
     if (!room) return null;
 
+    if (room.players) {
+      const player = room.players.find(p => p.id === playerId);
+      if (player) player.isReady = isReady;
+    }
+
+    // Keep backwards compatibility properties in sync
     if (room.hostPlayer.id === playerId) {
       room.hostPlayer.isReady = isReady;
     } else if (room.guestPlayer?.id === playerId) {
       room.guestPlayer.isReady = isReady;
     }
 
-    // Check if both players are ready
-    if (
-      room.hostPlayer.isReady &&
-      room.guestPlayer?.isReady &&
-      room.status === 'waiting'
-    ) {
-      room.status = 'ready';
-    } else if (room.status === 'ready') {
-      room.status = 'waiting';
+    // Check if ALL players are ready AND we have enough players
+    if (room.variant === 'ludo') {
+      const isEveryoneReady = room.players?.length && room.players.length > 1 && room.players.every(p => p.isReady);
+      if (isEveryoneReady && room.status === 'waiting') {
+        room.status = 'ready';
+      } else if (!isEveryoneReady && room.status === 'ready') {
+        room.status = 'waiting';
+      }
+    } else {
+      // Checkers
+      if (
+        room.hostPlayer.isReady &&
+        room.guestPlayer?.isReady &&
+        room.status === 'waiting'
+      ) {
+        room.status = 'ready';
+      } else if (room.status === 'ready') {
+        room.status = 'waiting';
+      }
     }
 
     return room;
@@ -131,6 +192,9 @@ export class RoomService {
     if (room.guestPlayer) {
       room.guestPlayer.isReady = false;
     }
+    if (room.players) {
+      room.players.forEach(p => p.isReady = false);
+    }
 
     return room;
   }
@@ -142,6 +206,14 @@ export class RoomService {
   ): GameRoom | null {
     const room = this.getRoomByPlayerId(playerId);
     if (!room) return null;
+
+    if (room.players) {
+      const p = room.players.find(p => p.id === playerId);
+      if (p) {
+        p.socketId = socketId;
+        p.isConnected = isConnected;
+      }
+    }
 
     if (room.hostPlayer.id === playerId) {
       room.hostPlayer.socketId = socketId;

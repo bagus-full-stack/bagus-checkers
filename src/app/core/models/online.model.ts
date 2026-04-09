@@ -8,10 +8,14 @@ export interface GameRoom {
   readonly name: string;
   readonly hostPlayer: OnlinePlayer;
   readonly guestPlayer?: OnlinePlayer;
+  readonly players?: OnlinePlayer[];
+  readonly maxPlayers?: number;
   readonly status: RoomStatus;
   readonly createdAt: number;
   readonly isPrivate: boolean;
   readonly variant: string;
+  readonly layout?: 'classic' | 'random';
+  readonly gameState?: unknown;
 }
 
 /**
@@ -58,8 +62,8 @@ export interface ServerEvents {
  * WebSocket events to server
  */
 export interface ClientEvents {
-  'room:create': { name: string; isPrivate: boolean; variant: string };
-  'room:join': { roomId: string };
+  'room:create': (data: { name: string; isPrivate: boolean; variant: string; layout?: 'classic' | 'random' }) => void;
+  'room:join': (data: { roomId: string }) => void;
   'room:leave': { roomId: string };
   'room:list': {};
   'player:ready': { roomId: string; isReady: boolean };
@@ -78,4 +82,3 @@ export interface ChatMessage {
   readonly message: string;
   readonly timestamp: number;
 }
-

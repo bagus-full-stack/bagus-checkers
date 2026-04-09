@@ -1,14 +1,14 @@
 import { Position } from './position.model';
 
 /**
- * Player colors in the game
+ * Player colors in the game (includes Checkers and Ludo variants)
  */
-export type PlayerColor = 'white' | 'black';
+export type PlayerColor = 'white' | 'black' | 'red' | 'blue' | 'yellow' | 'green';
 
 /**
  * Piece types
  */
-export type PieceType = 'pawn' | 'king';
+export type PieceType = 'pawn' | 'king' | 'token';
 
 /**
  * Represents a piece on the board
@@ -67,6 +67,7 @@ export function shouldPromote(piece: Piece, boardSize: number): boolean {
  * Black pieces start at the top (low row numbers) and move DOWN (increasing row)
  */
 export function getForwardDirection(color: PlayerColor): number {
-  return color === 'white' ? -1 : 1;
+  if (color === 'white') return -1;
+  if (color === 'black') return 1;
+  return 0; // Or throw, Ludo pieces follow a path, not a simple forward direction
 }
-

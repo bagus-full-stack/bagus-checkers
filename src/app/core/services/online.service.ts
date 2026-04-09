@@ -82,8 +82,8 @@ export class OnlineService {
   /**
    * Create a new game room
    */
-  createRoom(name: string, isPrivate: boolean = false, variant: string = 'international'): void {
-    this.socket?.emit('room:create', { name, isPrivate, variant });
+  createRoom(name: string, isPrivate: boolean = false, variant: string = 'international', layout?: 'classic' | 'random'): void {
+    this.socket?.emit('room:create', { name, isPrivate, variant, layout });
   }
 
   /**

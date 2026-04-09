@@ -6,14 +6,27 @@ interface GameState {
   currentPlayer: PlayerColor;
   status: 'playing' | 'finished';
   winner?: PlayerColor;
+
+  // Ludo specific
+  phase?: 'rolling' | 'moving';
+  players?: PlayerColor[];
+  consecutiveSixes?: number;
 }
 
 @Injectable()
 export class GameService {
   /**
-   * Creates initial game state for a 10x10 board
+   * Creates initial game state depending on variant
    */
-  createInitialState(): GameState {
+  createInitialState(variant: string = 'international', layout?: 'classic' | 'random'): GameState {
+    if (variant === 'ludo') {
+      return this.createLudoState();
+    }
+
+    return this.createCheckersState();
+  }
+
+  private createCheckersState(): GameState {
     const pieces: Piece[] = [];
     let pieceId = 0;
 
@@ -52,10 +65,48 @@ export class GameService {
     };
   }
 
+  private createLudoState(): GameState {
+    const players: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
+    const pieces: Piece[] = [];
+
+    // Ludo base starting positions for 4 players (corners of a 15x15 board)
+    const bases: Record<PlayerColor, Position[]> = {
+      red:    [{row: 2, col: 2}, {row: 2, col: 3}, {row: 3, col: 2}, {row: 3, col: 3}],
+      green:  [{row: 2, col: 11}, {row: 2, col: 12}, {row: 3, col: 11}, {row: 3, col: 12}],
+      yellow: [{row: 11, col: 11}, {row: 11, col: 12}, {row: 12, col: 11}, {row: 12, col: 12}],
+      blue:   [{row: 11, col: 2}, {row: 11, col: 3}, {row: 12, col: 2}, {row: 12, col: 3}],
+      white: [], black: [] // fallback
+    };
+
+    let pieceId = 0;
+    players.forEach(color => {
+      const basePositions = bases[color];
+      if (basePositions) {
+        basePositions.forEach(pos => {
+          pieces.push({
+            id: `${color}-${pieceId++}`,
+            color,
+            type: 'token',
+            position: pos
+          });
+        });
+      }
+    });
+
+    return {
+      pieces,
+      currentPlayer: 'red',
+      status: 'playing',
+      phase: 'rolling',
+      players,
+      consecutiveSixes: 0
+    };
+  }
+
   /**
    * Validates and applies a move
    */
-  applyMove(state: GameState, move: Move, playerColor: PlayerColor): GameState | null {
+  applyMove(state: GameState, move: any, playerColor: PlayerColor): GameState | null {
     // Validate it's the player's turn
     if (state.currentPlayer !== playerColor) {
       return null;
@@ -70,7 +121,7 @@ export class GameService {
     // Apply the move
     const newPieces = state.pieces
       .filter((p) => p.id !== piece.id)
-      .filter((p) => !move.capturedPieces.some((c) => c.id === p.id));
+      .filter((p) => !move.capturedPieces?.some((c: Piece) => c.id === p.id));
 
     let movedPiece: Piece = {
       ...piece,
@@ -105,4 +156,3 @@ export class GameService {
     return state.currentPlayer === playerColor;
   }
 }
-
