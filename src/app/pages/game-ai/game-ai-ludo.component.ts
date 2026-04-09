@@ -15,14 +15,14 @@ import { AIDifficulty, TimeMode, PlayerColor } from '../../core/models';
 import {
   LudoBoardComponent,
   DiceComponent,
-  GameInfoComponent,
-  GameOverModalComponent,
+  GameInfoLudoComponent,
+  GameOverModalLudoComponent,
 } from '../../components';
 
 @Component({
   selector: 'app-game-ai-ludo',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterLink, LudoBoardComponent, DiceComponent, GameInfoComponent, GameOverModalComponent],
+  imports: [CommonModule, RouterLink, LudoBoardComponent, DiceComponent, GameInfoLudoComponent, GameOverModalLudoComponent],
   template: `
     <div class="game-container ludo-theme">
       <header class="game-header">
@@ -60,40 +60,37 @@ import {
       </header>
 
       <main class="game-main">
-        <aside class="sidebar left-sidebar">
-          <app-game-info />
-        </aside>
-
         <section class="board-section" aria-label="Plateau de jeu">
-          <div style="display:flex; flex-direction:column; gap:1rem; align-items:center;">
+          <div style="display:flex; flex-direction:column; gap:1rem; align-items:center; width:100%;">
+             <div style="display:flex; justify-content:space-between; width:100%; align-items:center; padding: 0 1rem;">
+               <app-game-info-ludo />
+               <div style="display:flex; align-items:center; gap:1rem;">
+                 @if (isAiThinking()) {
+                  <div class="thinking-indicator">
+                    <span class="spinner" aria-hidden="true"></span>
+                    L'IA réfléchit...
+                  </div>
+                 }
+                 <span style="font-weight:bold; color:white;">Lancer le dé => </span>
+                 <app-dice
+                    [value]="diceRoll()"
+                    [isRolling]="isRolling()"
+                    [disabled]="phase() !== 'rolling' || currentPlayer() !== playerColor()"
+                    (roll)="onPlayerRollDice()"
+                  />
+               </div>
+             </div>
              <app-ludo-board
                 [board]="board()"
                 [selectedPiece]="undefined"
                 [movablePieces]="[]"
               />
-              <app-dice
-                [value]="diceRoll()"
-                [isRolling]="isRolling()"
-                [disabled]="phase() !== 'rolling' || currentPlayer() !== playerColor()"
-                (roll)="onPlayerRollDice()"
-              />
-
-              @if (isAiThinking()) {
-                <div class="thinking-indicator">
-                  <span class="spinner" aria-hidden="true"></span>
-                  L'IA réfléchit...
-                </div>
-              }
           </div>
         </section>
-
-        <aside class="sidebar right-sidebar">
-           <!-- Placeholder for Ludo history or other Ludo info -->
-        </aside>
       </main>
 
       @if (isGameOver()) {
-        <app-game-over-modal
+        <app-game-over-modal-ludo
           [winner]="null"
           [reason]="'En attente'"
           (newGame)="newGame()"
@@ -318,44 +315,21 @@ import {
 
     .game-main {
       flex: 1;
-      display: grid;
-      grid-template-columns: 280px 1fr 280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       gap: 2rem;
-      padding: 2rem;
+      padding: 1rem;
       max-width: 1400px;
       margin: 0 auto;
       width: 100%;
-
-      @media (max-width: 1200px) {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-      }
-    }
-
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-
-      @media (max-width: 1200px) {
-        order: 2;
-      }
     }
 
     .board-section {
       display: flex;
       align-items: flex-start;
       justify-content: center;
-
-      @media (max-width: 1200px) {
-        order: 1;
-      }
-    }
-
-    .right-sidebar {
-      @media (max-width: 1200px) {
-        order: 3;
-      }
+      width: 100%;
     }
 
     .ai-status {

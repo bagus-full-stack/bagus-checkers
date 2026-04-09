@@ -20,7 +20,7 @@ import { PieceComponent } from '../piece/piece.component';
           @for (col of [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]; track col) {
             <div
               class="ludo-cell"
-              [ngClass]="getCellClasses(row, col)"
+              [class]="getCellClasses(row, col)"
               (click)="onSquareClick(row, col)"
             >
               @if (getPieceAt(row, col); as p) {
@@ -42,10 +42,16 @@ import { PieceComponent } from '../piece/piece.component';
       </div>
     </div>
   `,
-  styles: [`
+  styles: `
+    :host {
+      display: block;
+      width: 100%;
+    }
+
     .ludo-board-container {
       width: 100%;
-      max-width: 600px;
+      height: auto;
+      max-width: min(90vw, 800px);
       aspect-ratio: 1;
       margin: 0 auto;
       padding: 10px;
@@ -116,7 +122,7 @@ import { PieceComponent } from '../piece/piece.component';
 
     /* Center */
     .center-cross { background: #333; }
-  `]
+  `
 })
 export class LudoBoardComponent {
   board = input.required<(Piece | null)[][]>();

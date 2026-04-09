@@ -15,16 +15,14 @@ import { ChatMessage, PlayerColor, TimeMode, TIME_MODES } from '../../core/model
 import {
   LudoBoardComponent,
   DiceComponent,
-  MoveHistoryComponent,
-  GameInfoComponent,
-  GameTimerComponent,
+  GameInfoLudoComponent,
   GameOverModalComponent,
 } from '../../components';
 
 @Component({
   selector: 'app-game-online-ludo',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormsModule, LudoBoardComponent, DiceComponent, MoveHistoryComponent, GameInfoComponent, GameTimerComponent, GameOverModalComponent],
+  imports: [RouterLink, FormsModule, LudoBoardComponent, DiceComponent, GameInfoLudoComponent, GameOverModalComponent],
   template: `
     <div class="game-container ludo-theme">
       <header class="game-header">
@@ -39,12 +37,10 @@ import {
       </header>
 
       <main class="game-main">
-        <aside class="sidebar left-sidebar">
-          <app-game-timer [player]="opponentColor()" />
-          <app-game-info />
-
+        <div style="display:flex; justify-content:space-between; width:100%; max-width:1000px; flex-wrap:wrap; gap:1rem; padding: 0 1rem;">
           <!-- Opponent Info -->
-          <div class="opponent-section">
+          <div class="opponent-section" style="flex:1;">
+            <app-game-info-ludo />
             <h3 class="section-label">Adversaire</h3>
             @if (opponent()) {
               <div class="opponent-info" [class.disconnected]="!opponent()?.isConnected">
@@ -59,109 +55,116 @@ import {
                 En attente d'un adversaire...
               </div>
             }
-          </div>
 
-          <!-- Ready Section (before game starts) -->
-          @if (roomStatus() === 'waiting' || roomStatus() === 'ready') {
-            <div class="ready-section">
-              <label class="ready-toggle">
-                <input
-                  type="checkbox"
-                  [checked]="isReady()"
-                  (change)="toggleReady()"
-                  [disabled]="!opponent()"
-                />
-                <span class="toggle-text">Je suis prêt</span>
-              </label>
-              @if (isHost()) {
-                <p class="room-code">
-                  Code: <strong>{{ roomId() }}</strong>
-                </p>
-              }
-            </div>
-          }
-        </aside>
-
-        <section class="board-section" aria-label="Plateau de jeu">
-          @if (roomStatus() === 'playing') {
-            <div style="display:flex; flex-direction:column; gap:1rem; align-items:center;">
-              <app-ludo-board
-                [board]="board()"
-                [selectedPiece]="selectedPiece()"
-                [movablePieces]="movablePieces()"
-                [validMoves]="validMoves()"
-                (pieceClicked)="onPieceClicked($event)"
-                (squareClicked)="onSquareClicked($event)"
-              />
-              <app-dice
-                [value]="diceRoll()"
-                [isRolling]="isRollingDice()"
-                [disabled]="!isMyTurn() || phase() !== 'rolling'"
-                (roll)="onRollDice()"
-              />
-            </div>
-          } @else {
-            <div class="waiting-screen">
-              <div class="waiting-content">
-                <h2>En attente</h2>
-                @if (!opponent()) {
-                  <p>Partagez le code de la salle avec votre adversaire</p>
-                  <div class="room-code-display">
-                    <span class="code">{{ roomId() }}</span>
-                    <button type="button" class="copy-btn" (click)="copyRoomCode()">
-                      📋 Copier
-                    </button>
-                  </div>
-                } @else if (!isReady() || !opponentReady()) {
-                  <p>En attente que les deux joueurs soient prêts...</p>
-                  <div class="ready-status">
-                    <span [class.ready]="isReady()">
-                      Vous: {{ isReady() ? '✅ Prêt' : '⏳ En attente' }}
-                    </span>
-                    <span [class.ready]="opponentReady()">
-                      {{ opponent()?.name }}: {{ opponentReady() ? '✅ Prêt' : '⏳ En attente' }}
-                    </span>
-                  </div>
+            <!-- Ready Section (before game starts) -->
+            @if (roomStatus() === 'waiting' || roomStatus() === 'ready') {
+              <div class="ready-section" style="margin-top:0.5rem">
+                <label class="ready-toggle">
+                  <input
+                    type="checkbox"
+                    [checked]="isReady()"
+                    (change)="toggleReady()"
+                    [disabled]="!opponent()"
+                  />
+                  <span class="toggle-text">Je suis prêt</span>
+                </label>
+                @if (isHost()) {
+                  <p class="room-code">
+                    Code: <strong>{{ roomId() }}</strong>
+                  </p>
                 }
               </div>
-            </div>
-          }
-        </section>
-
-        <aside class="sidebar right-sidebar">
-          <app-game-timer [player]="myColor()" />
-          <!-- Chat -->
-          <div class="chat-section">
-            <h3 class="section-label">Chat</h3>
-            <div class="chat-messages" role="log" aria-live="polite">
-              @for (msg of chatMessages(); track msg.id) {
-                <div class="chat-message" [class.own]="msg.playerId === currentPlayer()?.id">
-                  <span class="msg-author">{{ msg.playerName }}</span>
-                  <span class="msg-text">{{ msg.message }}</span>
-                </div>
-              }
-              @if (chatMessages().length === 0) {
-                <p class="chat-empty">Aucun message</p>
-              }
-            </div>
-            <form class="chat-input-form" (submit)="sendMessage($event)">
-              <input
-                type="text"
-                class="chat-input"
-                [(ngModel)]="chatInput"
-                name="chatInput"
-                placeholder="Votre message..."
-                maxlength="200"
-                autocomplete="off"
-              />
-              <button type="submit" class="send-btn" [disabled]="!chatInput().trim()">
-                Envoyer
-              </button>
-            </form>
+            }
           </div>
 
-          <app-move-history />
-        </aside>
+          <!-- Self & Actions -->
+          <div class="self-section" style="flex:1; display:flex; flex-direction:column; align-items:flex-end;">
+             <h3 class="section-label">Vous</h3>
+             <div class="opponent-info">
+               <span class="opponent-name">{{ currentPlayer()?.name ?? 'Moi' }}</span>
+             </div>
+             @if (roomStatus() === 'playing') {
+               <div style="display:flex; align-items:center; gap:1rem; margin-top:0.5rem;">
+                 <span style="font-weight:bold; color:white;">Lancer le dé => </span>
+                 <app-dice
+                    [value]="diceRoll()"
+                    [isRolling]="isRollingDice()"
+                    [disabled]="!isMyTurn() || phase() !== 'rolling'"
+                    (roll)="onRollDice()"
+                  />
+               </div>
+             }
+          </div>
+        </div>
+
+        <section class="board-section" aria-label="Plateau de jeu">
+            @if (roomStatus() === 'playing') {
+              <div style="display:flex; flex-direction:column; gap:1rem; align-items:center; width:100%;">
+                <app-ludo-board
+                  [board]="board()"
+                  [selectedPiece]="selectedPiece()"
+                  [movablePieces]="movablePieces()"
+                  [validMoves]="validMoves()"
+                  (pieceClicked)="onPieceClicked($event)"
+                  (squareClicked)="onSquareClicked($event)"
+                />
+              </div>
+            } @else {
+              <div class="waiting-screen" style="max-width:800px; width:100%;">
+                <div class="waiting-content">
+                  <h2>En attente</h2>
+                  @if (!opponent()) {
+                    <p>Partagez le code de la salle avec vos adversaires</p>
+                    <div class="room-code-display">
+                      <span class="code">{{ roomId() }}</span>
+                      <button type="button" class="copy-btn" (click)="copyRoomCode()">
+                        📋 Copier
+                      </button>
+                    </div>
+                  } @else if (!isReady() || !opponentReady()) {
+                    <p>En attente que les joueurs soient prêts...</p>
+                    <div class="ready-status">
+                      <span [class.ready]="isReady()">
+                        Vous: {{ isReady() ? '✅ Prêt' : '⏳ En attente' }}
+                      </span>
+                      <span [class.ready]="opponentReady()">
+                        {{ opponent()?.name }}: {{ opponentReady() ? '✅ Prêt' : '⏳ En attente' }}
+                      </span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+        </section>
+
+        <div class="chat-section" style="width:100%; max-width:800px;">
+          <h3 class="section-label">Chat</h3>
+          <div class="chat-messages" role="log" aria-live="polite" style="max-height: 200px;">
+            @for (msg of chatMessages(); track msg.id) {
+              <div class="chat-message" [class.own]="msg.playerId === currentPlayer()?.id">
+                <span class="msg-author">{{ msg.playerName }}</span>
+                <span class="msg-text">{{ msg.message }}</span>
+              </div>
+            }
+            @if (chatMessages().length === 0) {
+              <p class="chat-empty">Aucun message</p>
+            }
+          </div>
+          <form class="chat-input-form" (submit)="sendMessage($event)">
+            <input
+              type="text"
+              class="chat-input"
+              [(ngModel)]="chatInput"
+              name="chatInput"
+              placeholder="Votre message..."
+              maxlength="200"
+              autocomplete="off"
+            />
+            <button type="submit" class="send-btn" [disabled]="!chatInput().trim()">
+              Envoyer
+            </button>
+          </form>
+        </div>
       </main>
 
       @if (isGameOver()) {
@@ -274,18 +277,14 @@ import {
 
     .game-main {
       flex: 1;
-      display: grid;
-      grid-template-columns: 280px 1fr 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       gap: 2rem;
-      padding: 2rem;
+      padding: 1rem;
       max-width: 1400px;
       margin: 0 auto;
       width: 100%;
-
-      @media (max-width: 1200px) {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-      }
     }
 
     .sidebar {
