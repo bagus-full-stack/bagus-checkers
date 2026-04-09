@@ -13,14 +13,14 @@ import { LudoEngineService } from '../../core/services';
 import {
   LudoBoardComponent,
   DiceComponent,
-  GameInfoComponent,
-  GameOverModalComponent
+  GameInfoLudoComponent,
+  GameOverModalLudoComponent
 } from '../../components';
 
 @Component({
   selector: 'app-game-local-ludo',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterLink, LudoBoardComponent, DiceComponent, GameInfoComponent, GameOverModalComponent],
+  imports: [CommonModule, RouterLink, LudoBoardComponent, DiceComponent, GameInfoLudoComponent, GameOverModalLudoComponent],
   template: `
     <div class="game-container ludo-theme">
       <header class="game-header">
@@ -41,33 +41,31 @@ import {
       </header>
 
       <main class="game-main">
-        <aside class="sidebar left-sidebar">
-          <app-game-info />
-        </aside>
-
         <section class="board-section" aria-label="Plateau de jeu">
-          <div style="display:flex; flex-direction:column; gap:1rem; align-items:center;">
+          <div style="display:flex; flex-direction:column; gap:1rem; align-items:center; width:100%;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center; padding: 0 1rem;">
+             <app-game-info-ludo />
+             <div style="display:flex; align-items:center; gap:1rem;">
+                <span style="font-weight:bold; color:white;">Lancer le dé => </span>
+                <app-dice
+                  [value]="diceRoll()"
+                  [isRolling]="isRolling()"
+                  [disabled]="phase() !== 'rolling'"
+                  (roll)="onRollDice()"
+                />
+             </div>
+            </div>
              <app-ludo-board
                 [board]="board()"
                 [selectedPiece]="undefined"
                 [movablePieces]="[]"
               />
-              <app-dice
-                [value]="diceRoll()"
-                [isRolling]="isRolling()"
-                [disabled]="phase() !== 'rolling'"
-                (roll)="onRollDice()"
-              />
           </div>
         </section>
-
-        <aside class="sidebar right-sidebar">
-           <!-- Placeholder for Ludo history or other Ludo info -->
-        </aside>
       </main>
 
       @if (isGameOver()) {
-        <app-game-over-modal
+        <app-game-over-modal-ludo
           [winner]="null"
           [reason]="'Terminé'"
           (newGame)="newGame()"
@@ -231,34 +229,21 @@ import {
 
     .game-main {
       flex: 1;
-      display: grid;
-      grid-template-columns: 280px 1fr 280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       gap: 2rem;
-      padding: 2rem;
+      padding: 1rem;
       max-width: 1400px;
       margin: 0 auto;
       width: 100%;
-
-      @media (max-width: 1200px) {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-      }
-    }
-
-    .sidebar {
-      @media (max-width: 1200px) {
-        order: 2;
-      }
     }
 
     .board-section {
       display: flex;
       align-items: flex-start;
       justify-content: center;
-
-      @media (max-width: 1200px) {
-        order: 1;
-      }
+      width: 100%;
     }
 
     .right-sidebar {

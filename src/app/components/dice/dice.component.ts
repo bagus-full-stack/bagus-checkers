@@ -1,8 +1,8 @@
-import { Component, input, output } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
 
 @Component({
   selector: 'app-dice',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button
       class="dice btn"
@@ -99,4 +99,3 @@ export class DiceComponent {
 
   roll = output<void>();
 }
-
