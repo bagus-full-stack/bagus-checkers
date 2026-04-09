@@ -3,25 +3,114 @@ import {
   ChangeDetectionStrategy,
   inject,
   OnInit,
+  OnDestroy,
+  signal,
+  effect,
+  computed,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
-
-import { GameAiCheckersComponent } from './game-ai-checkers.component';
-import { GameAiLudoComponent } from './game-ai-ludo.component';
+import { LudoEngineService } from '../../core/services';
+import { AIDifficulty, TimeMode, PlayerColor } from '../../core/models';
+import {
+  LudoBoardComponent,
+  DiceComponent,
+  GameInfoComponent,
+  GameOverModalComponent,
+} from '../../components';
 
 @Component({
-  selector: 'app-game-ai',
+  selector: 'app-game-ai-ludo',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, GameAiCheckersComponent, GameAiLudoComponent],
+  imports: [CommonModule, RouterLink, LudoBoardComponent, DiceComponent, GameInfoComponent, GameOverModalComponent],
   template: `
-    @if (variant === 'ludo') {
-      <app-game-ai-ludo></app-game-ai-ludo>
-    } @else {
-      <app-game-ai-checkers></app-game-ai-checkers>
-    }
+    <div class="game-container ludo-theme">
+      <header class="game-header">
+        <a routerLink="/" class="back-link" aria-label="Retour au menu">
+          ← Menu
+        </a>
+        <h1 class="game-title">Partie contre l'IA (Ludo)</h1>
+        <div class="header-actions">
+          <div class="color-selector">
+            <span class="selector-label">Votre couleur :</span>
+            <button
+              class="color-btn"
+              [class.active]="playerColor() === 'red'"
+              (click)="setPlayerColor('red')"
+              aria-label="Jouer avec les rouges"
+            >Rouge</button>
+            <button
+              class="color-btn"
+              [class.active]="playerColor() === 'blue'"
+              (click)="setPlayerColor('blue')"
+              aria-label="Jouer avec les bleus"
+            >Bleu</button>
+          </div>
+          <select
+            class="difficulty-select"
+            [value]="difficulty()"
+            (change)="setDifficulty($event)"
+            aria-label="Niveau de l'IA"
+          >
+            <option value="easy">Facile</option>
+            <option value="medium">Moyen</option>
+          </select>
+          <button type="button" class="action-btn" (click)="newGame()">🔄 Nouvelle partie</button>
+        </div>
+      </header>
+
+      <main class="game-main">
+        <aside class="sidebar left-sidebar">
+          <app-game-info />
+        </aside>
+
+        <section class="board-section" aria-label="Plateau de jeu">
+          <div style="display:flex; flex-direction:column; gap:1rem; align-items:center;">
+             <app-ludo-board
+                [board]="board()"
+                [selectedPiece]="undefined"
+                [movablePieces]="[]"
+              />
+              <app-dice
+                [value]="diceRoll()"
+                [isRolling]="isRolling()"
+                [disabled]="phase() !== 'rolling' || currentPlayer() !== playerColor()"
+                (roll)="onPlayerRollDice()"
+              />
+
+              @if (isAiThinking()) {
+                <div class="thinking-indicator">
+                  <span class="spinner" aria-hidden="true"></span>
+                  L'IA réfléchit...
+                </div>
+              }
+          </div>
+        </section>
+
+        <aside class="sidebar right-sidebar">
+           <!-- Placeholder for Ludo history or other Ludo info -->
+        </aside>
+      </main>
+
+      @if (isGameOver()) {
+        <app-game-over-modal
+          [winner]="null"
+          [reason]="'En attente'"
+          (newGame)="newGame()"
+          (close)="closeModal()"
+        />
+      }
+    </div>
   `,
   styles: `
+    .ludo-theme {
+      background: linear-gradient(135deg, #451a03 0%, #7c2d12 50%, #451a03 100%);
+    }
+
+    :host-context(.light-theme) .ludo-theme {
+      background: linear-gradient(135deg, #fef3c7 0%, #ffedd5 50%, #fef3c7 100%);
+    }
+
     .game-container {
       min-height: 100vh;
       display: flex;
@@ -422,30 +511,120 @@ import { GameAiLudoComponent } from './game-ai-ludo.component';
         transform: translateY(0);
       }
     }
-
-    .analysis-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 150;
-      padding: 1rem;
-      animation: fadeIn 0.2s ease;
-    }
   `,
 })
-export class GameAiComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
+export class GameAiLudoComponent implements OnInit, OnDestroy {
+  private readonly ludoEngine = inject(LudoEngineService);
 
-  variant = 'checkers';
+  readonly status = this.ludoEngine.status;
+  readonly board = this.ludoEngine.board;
+  readonly phase = this.ludoEngine.phase;
+  readonly diceRoll = this.ludoEngine.diceRoll;
+  readonly currentPlayer = this.ludoEngine.currentPlayer;
+
+  readonly difficulty = signal<AIDifficulty>('medium');
+  readonly isAiThinking = signal(false);
+  readonly showModal = signal(true);
+  readonly playerColor = signal<PlayerColor>('red');
+  readonly isRolling = signal(false);
+
+  private aiTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private colors: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
+
+  constructor() {
+    effect(() => {
+      const currentPlayerColor = this.currentPlayer();
+      const st = this.status();
+      const currentPhase = this.phase();
+      const isMyTurn = currentPlayerColor === this.playerColor();
+
+      if (st === 'playing' && !isMyTurn) {
+        if (currentPhase === 'rolling' && !this.isRolling()) {
+          this.playAiRoll();
+        } else if (currentPhase === 'moving') {
+          this.playAiMove();
+        }
+      }
+    });
+  }
 
   ngOnInit(): void {
-    const v = this.route.snapshot.queryParamMap.get('variant');
-    if (v === 'ludo') {
-      this.variant = 'ludo';
+    this.newGame();
+  }
+
+  ngOnDestroy(): void {
+    if (this.aiTimeoutId) {
+      clearTimeout(this.aiTimeoutId);
     }
   }
-}
 
+  isGameOver(): boolean {
+    return this.status() === 'finished' && this.showModal();
+  }
+
+  newGame(): void {
+    if (this.aiTimeoutId) {
+      clearTimeout(this.aiTimeoutId);
+    }
+    this.isAiThinking.set(false);
+    this.showModal.set(true);
+
+    // Play with 2 colors for simplicity in AI for now
+    const aiColor = this.playerColor() === 'red' ? 'blue' : 'red';
+    this.ludoEngine.startNewGame([this.playerColor(), aiColor]);
+  }
+
+  setDifficulty(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    this.difficulty.set(target.value as AIDifficulty);
+  }
+
+  setPlayerColor(color: PlayerColor): void {
+    if (this.playerColor() !== color) {
+      this.playerColor.set(color);
+      this.newGame();
+    }
+  }
+
+  onPlayerRollDice(): void {
+    if (this.phase() !== 'rolling' || this.isRolling() || this.currentPlayer() !== this.playerColor()) return;
+    this.isRolling.set(true);
+    setTimeout(() => {
+      this.ludoEngine.rollDice();
+      this.isRolling.set(false);
+    }, 500);
+  }
+
+  closeModal(): void {
+    this.showModal.set(false);
+  }
+
+  private playAiRoll(): void {
+    if (this.isRolling()) return;
+    this.isAiThinking.set(true);
+    this.isRolling.set(true);
+    this.aiTimeoutId = setTimeout(() => {
+      this.ludoEngine.rollDice();
+      this.isRolling.set(false);
+      this.isAiThinking.set(false);
+    }, 1000);
+  }
+
+  private playAiMove(): void {
+    this.isAiThinking.set(true);
+    this.aiTimeoutId = setTimeout(() => {
+       // Quick arbitrary random move for testing (as Ludo AI isn't fully implemented in AI service yet)
+       const state = this.ludoEngine.gameState()
+       if(state) {
+         // Fake switch turn
+         const roll = state.lastDiceRoll ?? 1;
+         const pieces = state.pieces.filter(p => p.color === state.currentPlayer);
+         // Simulate moving piece internally by calling an engine "force move" or doing it
+         // Since engine doesn't have open API for arbitrary moves without validation currently we just force pass.
+         // We would ideally call: this.ludoEngine.moveTo(...)
+         console.warn("AI Moving not fully mapped in strict board tracks yet.");
+       }
+       this.isAiThinking.set(false);
+    }, 1000);
+  }
+}

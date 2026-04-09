@@ -3,23 +3,93 @@ import {
   ChangeDetectionStrategy,
   inject,
   OnInit,
+  signal,
+  effect,
+  computed,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
-
-import { GameLocalCheckersComponent } from './game-local-checkers.component';
-import { GameLocalLudoComponent } from './game-local-ludo.component';
+import { RouterLink } from '@angular/router';
+import { GameEngineService, TimerService, ReplayService } from '../../core/services';
+import { TimeMode, TIME_MODES } from '../../core/models';
+import {
+  BoardComponent,
+  MoveHistoryComponent,
+  GameInfoComponent,
+  GameTimerComponent,
+  GameOverModalComponent,
+} from '../../components';
 
 @Component({
-  selector: 'app-game-local',
+  selector: 'app-game-local-checkers',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, GameLocalCheckersComponent, GameLocalLudoComponent],
+  imports: [RouterLink, BoardComponent, MoveHistoryComponent, GameInfoComponent, GameTimerComponent, GameOverModalComponent],
   template: `
-    @if (variant === 'ludo') {
-      <app-game-local-ludo></app-game-local-ludo>
-    } @else {
-      <app-game-local-checkers></app-game-local-checkers>
-    }
+    <div class="game-container">
+      <header class="game-header">
+        <a routerLink="/" class="back-link" aria-label="Retour à l'accueil">
+          ← Accueil
+        </a>
+        <h1 class="game-title">Partie Locale</h1>
+        <div class="header-actions">
+          <select
+            class="time-select"
+            [value]="selectedTimeMode()"
+            (change)="onTimeModeChange($event)"
+            aria-label="Mode de temps"
+          >
+            @for (mode of timeModes; track mode.id) {
+              <option [value]="mode.id">{{ mode.name }}</option>
+            }
+          </select>
+          <button
+            type="button"
+            class="action-btn"
+            (click)="newGame()"
+            aria-label="Nouvelle partie"
+          >
+            🔄 Nouvelle partie
+          </button>
+        </div>
+      </header>
+
+      <!-- Current settings bar -->
+      <div class="settings-bar">
+        <div class="setting-item">
+          <span class="setting-icon">👥</span>
+          <span class="setting-value">Joueur vs Joueur</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-icon">⏱️</span>
+          <span class="setting-value">{{ getTimeModeLabel() }}</span>
+        </div>
+      </div>
+
+      <main class="game-main">
+        <aside class="sidebar left-sidebar">
+          <app-game-timer [player]="'black'" />
+          <app-game-info />
+        </aside>
+
+        <section class="board-section" aria-label="Plateau de jeu">
+          <app-board />
+        </section>
+
+        <aside class="sidebar right-sidebar">
+          <app-game-timer [player]="'white'" />
+          <app-move-history />
+        </aside>
+      </main>
+
+      @if (isGameOver()) {
+        <app-game-over-modal
+          [winner]="gameResult()?.winner ?? null"
+          [reason]="gameResult()?.reason"
+          [stats]="gameStats()"
+          (newGame)="newGame()"
+          (saveReplay)="saveReplay()"
+          (close)="closeModal()"
+        />
+      }
+    </div>
   `,
   styles: `
     .game-container {
@@ -317,16 +387,77 @@ import { GameLocalLudoComponent } from './game-local-ludo.component';
     }
   `,
 })
-export class GameLocalComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
+export class GameLocalCheckersComponent implements OnInit {
+  private readonly gameEngine = inject(GameEngineService);
+  private readonly timerService = inject(TimerService);
+  private readonly replayService = inject(ReplayService);
 
-  variant = 'checkers';
+  readonly gameResult = this.gameEngine.gameResult;
+  readonly status = this.gameEngine.status;
+  readonly selectedTimeMode = signal<TimeMode>('unlimited');
+  readonly showModal = signal(true);
+
+  readonly timeModes = Object.values(TIME_MODES);
+
+  readonly gameStats = computed(() => {
+    if (this.status() !== 'finished') return undefined;
+    return this.gameEngine.getGameStatistics() ?? undefined;
+  });
+
+  constructor() {
+    // Watch for timeout
+    effect(() => {
+      const timedOut = this.timerService.timedOutPlayer();
+      if (timedOut) {
+        this.gameEngine.handleTimeout(timedOut);
+      }
+    });
+  }
 
   ngOnInit(): void {
-    const v = this.route.snapshot.queryParamMap.get('variant');
-    if (v === 'ludo') {
-      this.variant = 'ludo';
-    }
+    this.gameEngine.startNewGame(this.selectedTimeMode());
+  }
+
+  isGameOver(): boolean {
+    return this.status() === 'finished' && this.showModal();
+  }
+
+  onTimeModeChange(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    this.selectedTimeMode.set(target.value as TimeMode);
+  }
+
+  getTimeModeLabel(): string {
+    const mode = this.timeModes.find(m => m.id === this.selectedTimeMode());
+    return mode?.name ?? 'Illimité';
+  }
+
+  newGame(): void {
+    this.showModal.set(true);
+    this.gameEngine.startNewGame(this.selectedTimeMode());
+  }
+
+  saveReplay(): void {
+    const stats = this.gameStats();
+    const result = this.gameResult();
+    if (!stats) return;
+
+    this.replayService.saveGame(
+      this.gameEngine.gameState()?.moveHistory ?? [],
+      this.gameEngine.getMaterialHistory(),
+      'Joueur 1',
+      'Joueur 2',
+      result?.winner ?? null,
+      result?.reason ?? '',
+      'Dames Internationales',
+      stats.duration
+    );
+
+    alert('Partie sauvegardée !');
+  }
+
+  closeModal(): void {
+    this.showModal.set(false);
   }
 }
 

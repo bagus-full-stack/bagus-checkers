@@ -3,25 +3,88 @@ import {
   ChangeDetectionStrategy,
   inject,
   OnInit,
+  signal,
+  effect,
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
-
-import { GameLocalCheckersComponent } from './game-local-checkers.component';
-import { GameLocalLudoComponent } from './game-local-ludo.component';
+import { RouterLink } from '@angular/router';
+import { LudoEngineService } from '../../core/services';
+import {
+  LudoBoardComponent,
+  DiceComponent,
+  GameInfoComponent,
+  GameOverModalComponent
+} from '../../components';
 
 @Component({
-  selector: 'app-game-local',
+  selector: 'app-game-local-ludo',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, GameLocalCheckersComponent, GameLocalLudoComponent],
+  imports: [CommonModule, RouterLink, LudoBoardComponent, DiceComponent, GameInfoComponent, GameOverModalComponent],
   template: `
-    @if (variant === 'ludo') {
-      <app-game-local-ludo></app-game-local-ludo>
-    } @else {
-      <app-game-local-checkers></app-game-local-checkers>
-    }
+    <div class="game-container ludo-theme">
+      <header class="game-header">
+        <a routerLink="/" class="back-link" aria-label="Retour  l'accueil">
+          ← Accueil
+        </a>
+        <h1 class="game-title">Partie Locale (Ludo)</h1>
+        <div class="header-actions">
+          <button
+            type="button"
+            class="action-btn"
+            (click)="newGame()"
+            aria-label="Nouvelle partie"
+          >
+            🔄 Nouvelle partie
+          </button>
+        </div>
+      </header>
+
+      <main class="game-main">
+        <aside class="sidebar left-sidebar">
+          <app-game-info />
+        </aside>
+
+        <section class="board-section" aria-label="Plateau de jeu">
+          <div style="display:flex; flex-direction:column; gap:1rem; align-items:center;">
+             <app-ludo-board
+                [board]="board()"
+                [selectedPiece]="undefined"
+                [movablePieces]="[]"
+              />
+              <app-dice
+                [value]="diceRoll()"
+                [isRolling]="isRolling()"
+                [disabled]="phase() !== 'rolling'"
+                (roll)="onRollDice()"
+              />
+          </div>
+        </section>
+
+        <aside class="sidebar right-sidebar">
+           <!-- Placeholder for Ludo history or other Ludo info -->
+        </aside>
+      </main>
+
+      @if (isGameOver()) {
+        <app-game-over-modal
+          [winner]="null"
+          [reason]="'Terminé'"
+          (newGame)="newGame()"
+          (close)="closeModal()"
+        />
+      }
+    </div>
   `,
   styles: `
+    .ludo-theme {
+      background: linear-gradient(135deg, #451a03 0%, #7c2d12 50%, #451a03 100%);
+    }
+
+    :host-context(.light-theme) .ludo-theme {
+      background: linear-gradient(135deg, #fef3c7 0%, #ffedd5 50%, #fef3c7 100%);
+    }
+
     .game-container {
       min-height: 100vh;
       display: flex;
@@ -317,16 +380,41 @@ import { GameLocalLudoComponent } from './game-local-ludo.component';
     }
   `,
 })
-export class GameLocalComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
+export class GameLocalLudoComponent implements OnInit {
+  private readonly ludoEngine = inject(LudoEngineService);
 
-  variant = 'checkers';
+  readonly status = this.ludoEngine.status;
+  readonly board = this.ludoEngine.board;
+  readonly phase = this.ludoEngine.phase;
+  readonly diceRoll = this.ludoEngine.diceRoll;
+  readonly currentPlayer = this.ludoEngine.currentPlayer;
+
+  readonly showModal = signal(true);
+  readonly isRolling = signal(false);
 
   ngOnInit(): void {
-    const v = this.route.snapshot.queryParamMap.get('variant');
-    if (v === 'ludo') {
-      this.variant = 'ludo';
-    }
+    this.ludoEngine.startNewGame(['red', 'green', 'yellow', 'blue']);
+  }
+
+  isGameOver(): boolean {
+    return this.status() === 'finished' && this.showModal();
+  }
+
+  newGame(): void {
+    this.showModal.set(true);
+    this.ludoEngine.startNewGame(['red', 'green', 'yellow', 'blue']);
+  }
+
+  onRollDice(): void {
+    if (this.phase() !== 'rolling' || this.isRolling()) return;
+    this.isRolling.set(true);
+    setTimeout(() => {
+      this.ludoEngine.rollDice();
+      this.isRolling.set(false);
+    }, 500); // simulate 500ms animation
+  }
+
+  closeModal(): void {
+    this.showModal.set(false);
   }
 }
-
