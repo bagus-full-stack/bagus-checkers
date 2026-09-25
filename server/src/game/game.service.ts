@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Move, Piece, Position, PlayerColor } from './types';
+import { getCheckersVariant, getValidMovesForPiece } from './checkers-rules';
+
+function sameCapturedPieces(a: Piece[], b: Piece[]): boolean {
+  if (a.length !== b.length) return false;
+  const ids = new Set(a.map((p) => p.id));
+  return b.every((p) => ids.has(p.id));
+}
 
 interface GameState {
   pieces: Piece[];
@@ -106,7 +113,12 @@ export class GameService {
   /**
    * Validates and applies a move
    */
-  applyMove(state: GameState, move: any, playerColor: PlayerColor): GameState | null {
+  applyMove(
+    state: GameState,
+    move: Move,
+    playerColor: PlayerColor,
+    variant: string = 'international'
+  ): GameState | null {
     // Validate it's the player's turn
     if (state.currentPlayer !== playerColor) {
       return null;
@@ -116,6 +128,27 @@ export class GameService {
     const piece = state.pieces.find((p) => p.id === move.piece.id);
     if (!piece || piece.color !== playerColor) {
       return null;
+    }
+
+    // Ludo tokens aren't checkers pieces and have no board-rule engine here yet
+    // (online Ludo isn't wired through this path - see createInitialState callers).
+    if (piece.type !== 'token') {
+      const legalMoves = getValidMovesForPiece(
+        piece,
+        { pieces: state.pieces },
+        getCheckersVariant(variant)
+      );
+      const legalMove = legalMoves.find(
+        (m) =>
+          m.to.row === move.to.row &&
+          m.to.col === move.to.col &&
+          sameCapturedPieces(m.capturedPieces, move.capturedPieces)
+      );
+      if (!legalMove) {
+        return null;
+      }
+      // Trust the server-computed move, not the client-submitted one.
+      move = legalMove;
     }
 
     // Apply the move

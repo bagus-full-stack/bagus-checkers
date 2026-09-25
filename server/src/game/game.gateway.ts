@@ -222,7 +222,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const newState = this.gameService.applyMove(
       currentState,
       data.move,
-      playerColor
+      playerColor,
+      room.variant
     );
 
     if (!newState) {

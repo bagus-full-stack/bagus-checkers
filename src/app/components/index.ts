@@ -3,7 +3,6 @@ export * from './square/square.component';
 export * from './board/board.component';
 export * from './move-history/move-history.component';
 export * from './game-info/game-info.component';
-export * from './game-info/game-info-checkers.component';
 export * from './game-info/game-info-ludo.component';
 export * from './game-timer/game-timer.component';
 export * from './material-graph/material-graph.component';

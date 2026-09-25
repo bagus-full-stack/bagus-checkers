@@ -1,11 +1,53 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
 import { GameRoom, OnlinePlayer, RoomStatus } from './types';
 
+// ponytail: single-instance-only persistence (JSON snapshot on disk, reloaded
+// on boot) so a restart doesn't wipe active games. Not a fix for horizontal
+// scaling across multiple server instances - that needs a shared store
+// (Redis/DB) instead, only worth building once there's actually more than
+// one server process.
+const STORE_PATH = path.join(process.cwd(), 'data', 'rooms.json');
+
 @Injectable()
-export class RoomService {
+export class RoomService implements OnModuleInit {
+  private readonly logger = new Logger(RoomService.name);
   private rooms = new Map<string, GameRoom>();
   private playerRooms = new Map<string, string>(); // playerId -> roomId
+  private saveTimer: NodeJS.Timeout | null = null;
+
+  onModuleInit(): void {
+    try {
+      const raw = fs.readFileSync(STORE_PATH, 'utf-8');
+      const data = JSON.parse(raw) as {
+        rooms: [string, GameRoom][];
+        playerRooms: [string, string][];
+      };
+      this.rooms = new Map(data.rooms);
+      this.playerRooms = new Map(data.playerRooms);
+      this.logger.log(`Restored ${this.rooms.size} room(s) from disk`);
+    } catch {
+      // No snapshot yet, or unreadable - start fresh.
+    }
+  }
+
+  private schedulePersist(): void {
+    if (this.saveTimer) return;
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      const data = {
+        rooms: Array.from(this.rooms.entries()),
+        playerRooms: Array.from(this.playerRooms.entries()),
+      };
+      fs.mkdir(path.dirname(STORE_PATH), { recursive: true }, () => {
+        fs.writeFile(STORE_PATH, JSON.stringify(data), (err) => {
+          if (err) this.logger.error('Failed to persist rooms', err);
+        });
+      });
+    }, 200);
+  }
 
   createRoom(
     host: OnlinePlayer,
@@ -34,6 +76,7 @@ export class RoomService {
 
     this.rooms.set(roomId, room);
     this.playerRooms.set(host.id, roomId);
+    this.schedulePersist();
 
     return room;
   }
@@ -64,6 +107,7 @@ export class RoomService {
     }
 
     this.playerRooms.set(player.id, roomId);
+    this.schedulePersist();
 
     return room;
   }
@@ -115,6 +159,7 @@ export class RoomService {
       room.status = 'waiting';
     }
 
+    this.schedulePersist();
     return { room, wasHost };
   }
 
@@ -171,6 +216,7 @@ export class RoomService {
       }
     }
 
+    this.schedulePersist();
     return room;
   }
 
@@ -180,6 +226,7 @@ export class RoomService {
     if (room.status !== 'ready') return null;
 
     room.status = 'playing';
+    this.schedulePersist();
     return room;
   }
 
@@ -196,6 +243,7 @@ export class RoomService {
       room.players.forEach(p => p.isReady = false);
     }
 
+    this.schedulePersist();
     return room;
   }
 
@@ -223,6 +271,7 @@ export class RoomService {
       room.guestPlayer.isConnected = isConnected;
     }
 
+    this.schedulePersist();
     return room;
   }
 
@@ -230,6 +279,7 @@ export class RoomService {
     const room = this.rooms.get(roomId);
     if (room) {
       room.gameState = gameState;
+      this.schedulePersist();
     }
   }
 }

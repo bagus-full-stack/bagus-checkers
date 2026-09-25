@@ -151,7 +151,7 @@ import {
       @if (isGameOver()) {
         <app-game-over-modal
           [winner]="gameResult()?.winner ?? null"
-          [reason]="gameResult()?.reason"
+          [reason]="$safeNavigationMigration(gameResult()?.reason)"
           [stats]="gameStats()"
           [eloChange]="eloChange()"
           [showRematch]="true"
