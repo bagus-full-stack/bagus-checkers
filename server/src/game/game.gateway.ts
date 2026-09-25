@@ -7,19 +7,34 @@ import {
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
+import { Logger, UseGuards } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomService } from './room.service';
 import { GameService } from './game.service';
-import { OnlinePlayer, Move, ChatMessage } from './types';
+import { OnlinePlayer, ChatMessage } from './types';
+import { getAllowedOrigins } from '../cors';
+import { WsThrottlerGuard } from './ws-throttler.guard';
+import {
+  RoomCreateDto,
+  RoomJoinDto,
+  RoomLeaveDto,
+  PlayerReadyDto,
+  GameMoveDto,
+  GameResignDto,
+  ChatSendDto,
+} from './dto';
 
 @WebSocketGateway({
   cors: {
-    origin: ['http://localhost:4200', 'http://localhost:4000'],
+    origin: getAllowedOrigins(),
     credentials: true,
   },
 })
+@UseGuards(WsThrottlerGuard)
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  private readonly logger = new Logger(GameGateway.name);
+
   @WebSocketServer()
   server!: Server;
 
@@ -47,7 +62,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.socketToPlayer.set(client.id, playerId);
 
     client.emit('player:info', player);
-    console.log(`Player connected: ${player.name} (${playerId})`);
+    this.logger.log(`Player connected: ${player.name} (${playerId})`);
   }
 
   handleDisconnect(client: Socket) {
@@ -69,13 +84,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.players.delete(client.id);
     this.socketToPlayer.delete(client.id);
 
-    console.log(`Player disconnected: ${player.name}`);
+    this.logger.log(`Player disconnected: ${player.name}`);
   }
 
   @SubscribeMessage('room:create')
   handleCreateRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { name: string; isPrivate: boolean; variant: string }
+    @MessageBody() data: RoomCreateDto
   ) {
     const player = this.players.get(client.id);
     if (!player) {
@@ -93,13 +108,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join(room.id);
     client.emit('room:created', { room });
 
-    console.log(`Room created: ${room.id} by ${player.name}`);
+    this.logger.log(`Room created: ${room.id} by ${player.name}`);
   }
 
   @SubscribeMessage('room:join')
   handleJoinRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string }
+    @MessageBody() data: RoomJoinDto
   ) {
     const player = this.players.get(client.id);
     if (!player) {
@@ -119,13 +134,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // Notify host
     this.server.to(room.id).emit('room:updated', { room });
 
-    console.log(`${player.name} joined room ${room.id}`);
+    this.logger.log(`${player.name} joined room ${room.id}`);
   }
 
   @SubscribeMessage('room:leave')
   handleLeaveRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string }
+    @MessageBody() data: RoomLeaveDto
   ) {
     const player = this.players.get(client.id);
     if (!player) return;
@@ -139,7 +154,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       playerId: player.id,
     });
 
-    console.log(`${player.name} left room ${data.roomId}`);
+    this.logger.log(`${player.name} left room ${data.roomId}`);
   }
 
   @SubscribeMessage('room:list')
@@ -151,7 +166,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('player:ready')
   handlePlayerReady(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string; isReady: boolean }
+    @MessageBody() data: PlayerReadyDto
   ) {
     const player = this.players.get(client.id);
     if (!player) return;
@@ -178,7 +193,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           initialState,
         });
 
-        console.log(`Game started in room ${room.id}`);
+        this.logger.log(`Game started in room ${room.id}`);
       }
     }
   }
@@ -186,7 +201,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('game:move')
   handleGameMove(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string; move: Move }
+    @MessageBody() data: GameMoveDto
   ) {
     const player = this.players.get(client.id);
     if (!player) return;
@@ -233,14 +248,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         },
       });
 
-      console.log(`Game ended in room ${room.id}, winner: ${newState.winner}`);
+      this.logger.log(`Game ended in room ${room.id}, winner: ${newState.winner}`);
     }
   }
 
   @SubscribeMessage('game:resign')
   handleResign(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string }
+    @MessageBody() data: GameResignDto
   ) {
     const player = this.players.get(client.id);
     if (!player) return;
@@ -262,13 +277,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       },
     });
 
-    console.log(`${player.name} resigned in room ${room.id}`);
+    this.logger.log(`${player.name} resigned in room ${room.id}`);
   }
 
   @SubscribeMessage('chat:send')
   handleChatMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string; message: string }
+    @MessageBody() data: ChatSendDto
   ) {
     const player = this.players.get(client.id);
     if (!player || !data.message.trim()) return;

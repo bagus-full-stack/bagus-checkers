@@ -14,10 +14,13 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  it('should render the theme, sound and help toggles', async () => {
     const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, checkers');
+    expect(compiled.querySelector('.theme-toggle')).toBeTruthy();
+    expect(compiled.querySelector('.sound-toggle')).toBeTruthy();
+    expect(compiled.querySelector('.help-toggle')).toBeTruthy();
   });
 });

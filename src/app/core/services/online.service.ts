@@ -55,15 +55,17 @@ export class OnlineService {
     this._connectionStatus.set('connecting');
     this._error.set(null);
 
-    const serverUrl = environment.wsUrl || 'http://localhost:3000';
-
-    this.socket = io(serverUrl, {
+    const socketOptions = {
       auth: { playerName },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-    });
+    };
+
+    // Empty wsUrl means "same origin" (production) - passing '' to io() would
+    // try to connect to it literally, so omit the uri arg instead.
+    this.socket = environment.wsUrl ? io(environment.wsUrl, socketOptions) : io(socketOptions);
 
     this.setupEventListeners();
   }
