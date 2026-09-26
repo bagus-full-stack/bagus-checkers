@@ -11,7 +11,7 @@ import {
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { OnlineService, TimerService, ReplayService, RankingService, LudoEngineService } from '../../core/services';
-import { ChatMessage, PlayerColor, TimeMode, TIME_MODES } from '../../core/models';
+import { ChatMessage, PlayerColor, TimeMode, TIME_MODES, Piece } from '../../core/models';
 import {
   LudoBoardComponent,
   DiceComponent,
@@ -102,11 +102,8 @@ import {
               <div style="display:flex; flex-direction:column; gap:1rem; align-items:center; width:100%;">
                 <app-ludo-board
                   [board]="board()"
-                  [selectedPiece]="selectedPiece()"
                   [movablePieces]="movablePieces()"
-                  [validMoves]="validMoves()"
                   (pieceClicked)="onPieceClicked($event)"
-                  (squareClicked)="onSquareClicked($event)"
                 />
               </div>
             } @else {
@@ -670,15 +667,11 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
   readonly board = this.ludoEngine.board;
   readonly diceRoll = this.ludoEngine.diceRoll;
   readonly phase = this.ludoEngine.phase;
-  // TODO: add real selection logic mapping for Ludo online
-  readonly selectedPiece = signal<any>(null);
-  readonly validMoves = signal<any[]>([]);
-  readonly movablePieces = signal<any[]>([]);
+  readonly movablePieces = computed(() =>
+    this.isMyTurn() ? this.ludoEngine.movableOptions().map(o => o.piece) : []
+  );
 
-  // Stubs for GameOverModalComponent matching
-  readonly gameResult = computed(() => {
-    return this.status() === 'finished' ? { winner: 'red' as 'red', reason: 'Ludo not fully mapped' } : null;
-  });
+  readonly gameResult = this.ludoEngine.result;
   readonly gameStats = signal<any>(null);
   readonly eloChange = signal<number | undefined>(undefined);
 
@@ -699,11 +692,6 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
     return this.currentRoom()?.players?.every(p => p.id === this.currentPlayer()?.id || p.isReady) ?? false;
   });
 
-  readonly opponentColor = computed((): PlayerColor => {
-    // Simplify opponent color display
-    return 'blue';
-  });
-
   constructor() {
     // Watch for game state updates from server
     effect(() => {
@@ -720,7 +708,7 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
     // Sub to external sockets for move/roll sync
     const socket = this.onlineService.getSocket();
     if (socket) {
-      socket.on('ludo:roll', (data) => {
+      socket.on('game:ludo:roll', (data) => {
         // sync roll from other player
         // for now just local simulate for MVP
       });
@@ -753,18 +741,15 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
     return false;
   }
 
-  onPieceClicked(piece: any): void {
+  onPieceClicked(piece: Piece): void {
     if (!this.isMyTurn() || this.phase() !== 'moving') return;
-    this.selectedPiece.set(piece);
-    // this.ludoEngine.selectPiece(piece) ...
-  }
+    const option = this.ludoEngine.movableOptions().find(o => o.piece.id === piece.id);
+    if (!option) return;
 
-  onSquareClicked(pos: any): void {
-    if (!this.isMyTurn() || !this.selectedPiece()) return;
-    const moved = this.ludoEngine.moveTo(this.selectedPiece()!, pos);
+    const from = option.piece.position;
+    const moved = this.ludoEngine.moveTo(option.piece, option.destination);
     if (moved) {
-      this.selectedPiece.set(null);
-      this.onlineService.sendMove({ piece: this.selectedPiece()!, from: this.selectedPiece()!.position, to: pos, capturedPieces: [], isPromotion: false });
+      this.onlineService.sendMove({ piece: option.piece, from, to: option.destination, capturedPieces: [], isPromotion: false });
     }
   }
 

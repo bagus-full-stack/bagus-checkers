@@ -10,6 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LudoEngineService } from '../../core/services';
+import { Piece } from '../../core/models';
 import {
   LudoBoardComponent,
   DiceComponent,
@@ -58,7 +59,8 @@ import {
              <app-ludo-board
                 [board]="board()"
                 [selectedPiece]="undefined"
-                [movablePieces]="[]"
+                [movablePieces]="movablePieces()"
+                (pieceClicked)="onPieceClicked($event)"
               />
           </div>
         </section>
@@ -66,7 +68,7 @@ import {
 
       @if (isGameOver()) {
         <app-game-over-modal-ludo
-          [winner]="null"
+          [winner]="result()?.winner ?? null"
           [reason]="'Terminé'"
           (newGame)="newGame()"
           (close)="closeModal()"
@@ -373,6 +375,8 @@ export class GameLocalLudoComponent implements OnInit {
   readonly phase = this.ludoEngine.phase;
   readonly diceRoll = this.ludoEngine.diceRoll;
   readonly currentPlayer = this.ludoEngine.currentPlayer;
+  readonly result = this.ludoEngine.result;
+  readonly movablePieces = computed(() => this.ludoEngine.movableOptions().map(o => o.piece));
 
   readonly showModal = signal(true);
   readonly isRolling = signal(false);
@@ -401,5 +405,11 @@ export class GameLocalLudoComponent implements OnInit {
 
   closeModal(): void {
     this.showModal.set(false);
+  }
+
+  onPieceClicked(piece: Piece): void {
+    const option = this.ludoEngine.movableOptions().find(o => o.piece.id === piece.id);
+    if (!option) return;
+    this.ludoEngine.moveTo(option.piece, option.destination);
   }
 }

@@ -5,8 +5,23 @@ import {
   PlayerColor,
   createPiece
 } from '../models/piece.model';
-import { LudoGameState, LudoPhase, LUDO_BASES, LUDO_START_INDEX } from '../models/ludo.model';
+import {
+  LudoGameState,
+  LUDO_BASES,
+  LUDO_TOTAL_STEPS,
+  LUDO_SAFE_INDICES,
+  LUDO_START_INDEX,
+  LUDO_TRACK_LENGTH,
+  ludoPositionForSteps
+} from '../models/ludo.model';
 import { AudioService } from './audio.service';
+
+export interface LudoMoveOption {
+  piece: Piece;
+  steps: number;
+  destination: Position;
+  capturedPieceIds: string[];
+}
 
 @Injectable({
   providedIn: 'root',
@@ -18,9 +33,17 @@ export class LudoEngineService {
   readonly gameState = this._gameState.asReadonly();
   readonly currentPlayer = computed(() => this._gameState()?.currentPlayer ?? 'red');
   readonly status = computed(() => this._gameState()?.status ?? 'waiting');
+  readonly result = computed(() => this._gameState()?.result);
   readonly pieces = computed(() => this._gameState()?.pieces ?? []);
   readonly phase = computed(() => this._gameState()?.phase ?? 'rolling');
   readonly diceRoll = computed(() => this._gameState()?.lastDiceRoll);
+
+  /** Pieces the current player can legally move with the last dice roll. */
+  readonly movableOptions = computed<LudoMoveOption[]>(() => {
+    const state = this._gameState();
+    if (!state || state.phase !== 'moving' || !state.lastDiceRoll) return [];
+    return this.getMoveOptions(state, state.currentPlayer, state.lastDiceRoll);
+  });
 
   /** Calculate board (15x15 for Ludo) */
   readonly board = computed(() => {
@@ -62,19 +85,16 @@ export class LudoEngineService {
     this.audioService.playGameStart();
   }
 
-  rollDice(): void {
+  rollDice(): number | null {
     const state = this._gameState();
-    if (!state || state.status !== 'playing' || state.phase !== 'rolling') return;
+    if (!state || state.status !== 'playing' || state.phase !== 'rolling') return null;
 
     const roll = Math.floor(Math.random() * 6) + 1; // 1-6
-    // this.audioService.playDiceRoll(); // Assuming audioService supports it, fallback to default move
     this.audioService.playMove();
 
-    // Check if player has valid moves given this roll
-    // If not, immediately pass turn
-    const hasValidMove = this.hasAnyValidMove(state.currentPlayer, roll, state.pieces);
+    const options = this.getMoveOptions(state, state.currentPlayer, roll);
 
-    if (hasValidMove) {
+    if (options.length > 0) {
       this._gameState.set({
         ...state,
         lastDiceRoll: roll,
@@ -84,29 +104,63 @@ export class LudoEngineService {
     } else {
       this.nextTurn(state, roll);
     }
-  }
-
-  private hasAnyValidMove(color: PlayerColor, roll: number, pieces: Piece[]): boolean {
-    const playerPieces = pieces.filter(p => p.color === color);
-
-    for (const p of playerPieces) {
-      // In base needs a 6 to move out
-      if (this.isInBase(p) && roll === 6) return true;
-      // On track simply needs to not overshoot home
-      if (!this.isInBase(p) && !this.isInHome(p)) return true;
-    }
-    return false;
+    return roll;
   }
 
   private isInBase(piece: Piece): boolean {
-    // Check if piece position matches any base position for its color
-    return LUDO_BASES[piece.color]?.some(pos => positionsEqual(pos, piece.position)) ?? false;
+    return piece.trackIndex === undefined;
   }
 
-  private isInHome(piece: Piece): boolean {
-    // Stub: determine if piece reached the center goals (triangles)
-    // To complete this logic, a strict coordinate path is needed.
-    return false;
+  private isFinished(piece: Piece): boolean {
+    return piece.trackIndex === LUDO_TOTAL_STEPS;
+  }
+
+  /** All legal (piece, destination) moves for `color` given `roll`. */
+  private getMoveOptions(state: LudoGameState, color: PlayerColor, roll: number): LudoMoveOption[] {
+    const playerPieces = state.pieces.filter(p => p.color === color);
+    const options: LudoMoveOption[] = [];
+
+    for (const piece of playerPieces) {
+      if (this.isFinished(piece)) continue;
+
+      if (this.isInBase(piece)) {
+        if (roll !== 6) continue;
+        // Can't exit onto a square already occupied by 2+ of your own tokens (blocked) -
+        // simplification: a single own token there is fine (stacks), matches base-slot behavior.
+        const destination = ludoPositionForSteps(color, 0);
+        options.push({
+          piece,
+          steps: 0,
+          destination,
+          capturedPieceIds: this.capturesAt(state, color, destination, 0),
+        });
+        continue;
+      }
+
+      const newSteps = piece.trackIndex! + roll;
+      if (newSteps > LUDO_TOTAL_STEPS) continue; // must roll the exact number to finish
+
+      const destination = ludoPositionForSteps(color, newSteps);
+      options.push({
+        piece,
+        steps: newSteps,
+        destination,
+        capturedPieceIds: this.capturesAt(state, color, destination, newSteps),
+      });
+    }
+
+    return options;
+  }
+
+  private capturesAt(state: LudoGameState, color: PlayerColor, destination: Position, newSteps: number): string[] {
+    // Home column squares are private - no captures there. Only the shared track has captures.
+    if (newSteps >= LUDO_TRACK_LENGTH) return [];
+    const globalIndex = (LUDO_START_INDEX[color] + newSteps) % LUDO_TRACK_LENGTH;
+    if (LUDO_SAFE_INDICES.has(globalIndex)) return [];
+
+    return state.pieces
+      .filter(p => p.color !== color && !this.isInBase(p) && positionsEqual(p.position, destination))
+      .map(p => p.id);
   }
 
   moveTo(piece: Piece, targetPosition: Position): boolean {
@@ -115,30 +169,51 @@ export class LudoEngineService {
       return false;
     }
 
-    // Stub: compute actual track index movement, capture logic vs safe zones, etc.
-    const movedPiece = { ...piece, position: targetPosition };
+    const option = this.getMoveOptions(state, piece.color, state.lastDiceRoll)
+      .find(o => o.piece.id === piece.id && positionsEqual(o.destination, targetPosition));
+    if (!option) return false;
 
-    // Check Capture (opponent tokens on that spot go back to base)
-    const opponents = state.pieces.filter(p => p.color !== piece.color && positionsEqual(p.position, targetPosition));
-    const capturedPieces = opponents.map(p => {
-      // Send back to available base slot
+    const movedPiece: Piece = { ...piece, position: option.destination, trackIndex: option.steps };
+
+    // Send each captured piece back to its own first free base slot (not all onto slot 0).
+    const capturedIds = new Set(option.capturedPieceIds);
+    const takenBaseSlots = new Set<string>();
+    const newPieces = state.pieces.map(p => {
+      if (p.id === piece.id) return movedPiece;
+      if (!capturedIds.has(p.id)) return p;
+
       const baseSpots = LUDO_BASES[p.color];
-      // Placeholder: just take the first spot for now
-      return { ...p, position: baseSpots[0] };
+      const freeSpot = baseSpots.find(spot => {
+        const key = `${p.color}:${spot.row},${spot.col}`;
+        if (takenBaseSlots.has(key)) return false;
+        const occupied = state.pieces.some(op => op.color === p.color && op.trackIndex === undefined && positionsEqual(op.position, spot));
+        return !occupied;
+      }) ?? baseSpots[0];
+      takenBaseSlots.add(`${p.color}:${freeSpot.row},${freeSpot.col}`);
+      return { ...p, position: freeSpot, trackIndex: undefined };
     });
 
-    // Rebuild pieces
-    const otherPieces = state.pieces.filter(p => p.id !== piece.id && !opponents.some(o => o.id === p.id));
-    const newPieces = [...otherPieces, movedPiece, ...capturedPieces];
-
-    if (capturedPieces.length > 0) {
+    if (capturedIds.size > 0) {
       this.audioService.playCapture();
     } else {
       this.audioService.playMove();
     }
 
-    this.nextTurn({...state, pieces: newPieces}, state.lastDiceRoll);
+    const nextState: LudoGameState = { ...state, pieces: newPieces };
+    const winner = this.checkWinner(nextState, piece.color);
+    if (winner) {
+      this._gameState.set({ ...nextState, status: 'finished', result: { winner, reason: 'all-pieces-home' }, phase: 'rolling' });
+      this.audioService.playGameEnd();
+      return true;
+    }
+
+    this.nextTurn(nextState, state.lastDiceRoll);
     return true;
+  }
+
+  private checkWinner(state: LudoGameState, color: PlayerColor): PlayerColor | null {
+    const allHome = state.pieces.filter(p => p.color === color).every(p => this.isFinished(p));
+    return allHome ? color : null;
   }
 
   private nextTurn(state: LudoGameState, lastRoll: number): void {

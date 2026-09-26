@@ -11,7 +11,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { LudoEngineService } from '../../core/services';
-import { AIDifficulty, TimeMode, PlayerColor } from '../../core/models';
+import { AIDifficulty, TimeMode, PlayerColor, Piece } from '../../core/models';
 import {
   LudoBoardComponent,
   DiceComponent,
@@ -83,7 +83,8 @@ import {
              <app-ludo-board
                 [board]="board()"
                 [selectedPiece]="undefined"
-                [movablePieces]="[]"
+                [movablePieces]="movablePieces()"
+                (pieceClicked)="onPieceClicked($event)"
               />
           </div>
         </section>
@@ -91,8 +92,8 @@ import {
 
       @if (isGameOver()) {
         <app-game-over-modal-ludo
-          [winner]="null"
-          [reason]="'En attente'"
+          [winner]="result()?.winner ?? null"
+          [reason]="'Terminé'"
           (newGame)="newGame()"
           (close)="closeModal()"
         />
@@ -495,6 +496,10 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
   readonly phase = this.ludoEngine.phase;
   readonly diceRoll = this.ludoEngine.diceRoll;
   readonly currentPlayer = this.ludoEngine.currentPlayer;
+  readonly result = this.ludoEngine.result;
+  readonly movablePieces = computed(() =>
+    this.currentPlayer() === this.playerColor() ? this.ludoEngine.movableOptions().map(o => o.piece) : []
+  );
 
   readonly difficulty = signal<AIDifficulty>('medium');
   readonly isAiThinking = signal(false);
@@ -587,18 +592,22 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
   private playAiMove(): void {
     this.isAiThinking.set(true);
     this.aiTimeoutId = setTimeout(() => {
-       // Quick arbitrary random move for testing (as Ludo AI isn't fully implemented in AI service yet)
-       const state = this.ludoEngine.gameState()
-       if(state) {
-         // Fake switch turn
-         const roll = state.lastDiceRoll ?? 1;
-         const pieces = state.pieces.filter(p => p.color === state.currentPlayer);
-         // Simulate moving piece internally by calling an engine "force move" or doing it
-         // Since engine doesn't have open API for arbitrary moves without validation currently we just force pass.
-         // We would ideally call: this.ludoEngine.moveTo(...)
-         console.warn("AI Moving not fully mapped in strict board tracks yet.");
-       }
-       this.isAiThinking.set(false);
+      const options = this.ludoEngine.movableOptions();
+      // ponytail: naive heuristic (prefer a capture, else the piece furthest along) - upgrade to lookahead if AI quality matters
+      const best =
+        options.find(o => o.capturedPieceIds.length > 0) ??
+        options.reduce((a, b) => (b.steps > a.steps ? b : a), options[0]);
+      if (best) {
+        this.ludoEngine.moveTo(best.piece, best.destination);
+      }
+      this.isAiThinking.set(false);
     }, 1000);
+  }
+
+  onPieceClicked(piece: Piece): void {
+    if (this.currentPlayer() !== this.playerColor()) return;
+    const option = this.ludoEngine.movableOptions().find(o => o.piece.id === piece.id);
+    if (!option) return;
+    this.ludoEngine.moveTo(option.piece, option.destination);
   }
 }

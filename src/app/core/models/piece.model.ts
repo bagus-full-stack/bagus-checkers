@@ -18,6 +18,8 @@ export interface Piece {
   readonly color: PlayerColor;
   readonly type: PieceType;
   readonly position: Position;
+  /** Ludo only: steps taken since leaving base. undefined = still in base. See ludo.model.ts */
+  readonly trackIndex?: number;
 }
 
 /**

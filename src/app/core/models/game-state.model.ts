@@ -11,7 +11,7 @@ export type GameStatus = 'waiting' | 'playing' | 'paused' | 'finished';
  */
 export interface GameResult {
   readonly winner: PlayerColor | 'draw';
-  readonly reason: 'no-pieces' | 'no-moves' | 'resignation' | 'timeout' | 'draw-agreement' | 'draw-repetition';
+  readonly reason: 'no-pieces' | 'no-moves' | 'resignation' | 'timeout' | 'draw-agreement' | 'draw-repetition' | 'all-pieces-home';
 }
 
 /**

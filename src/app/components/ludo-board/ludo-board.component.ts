@@ -167,14 +167,17 @@ export class LudoBoardComponent {
     // Bottom-right: YELLOW
     else if (row > 8 && col > 8) classes.push('base-yellow');
 
-    // Home columns/rows
-    else if (col === 7 && row > 0 && row < 6) classes.push('home-red'); // Red home path (top)
-    else if (row === 7 && col > 8 && col < 14) classes.push('home-green'); // Green home path (right)
-    else if (col === 7 && row > 8 && row < 14) classes.push('home-yellow'); // Yellow home path (bottom)
-    else if (row === 7 && col > 0 && col < 6) classes.push('home-blue'); // Blue home path (left)
+    // Home columns/rows - each color's private run-in to the center, adjacent to
+    // the shared-track branch cell a token reaches after (almost) a full lap.
+    else if (row === 7 && col > 0 && col < 6) classes.push('home-red'); // Red home path (left)
+    else if (col === 7 && row > 0 && row < 6) classes.push('home-green'); // Green home path (top)
+    else if (row === 7 && col > 8 && col < 14) classes.push('home-yellow'); // Yellow home path (right)
+    else if (col === 7 && row > 8 && row < 14) classes.push('home-blue'); // Blue home path (bottom)
 
-    // Center area
-    else if (row > 5 && row < 9 && col > 5 && col < 9) classes.push('center-cross');
+    // True center (the small plus-shape the 4 home paths feed into). The 4 cells at
+    // the inner corners of this block ((6,6),(6,8),(8,6),(8,8)) are shared track, not
+    // center - they're what connects the horizontal and vertical arms into one loop.
+    else if ((row === 7 && col === 7) || (row === 6 && col === 7) || (row === 8 && col === 7) || (row === 7 && col === 6) || (row === 7 && col === 8)) classes.push('center-cross');
 
     else classes.push('track');
 
