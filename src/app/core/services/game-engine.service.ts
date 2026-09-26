@@ -90,6 +90,25 @@ export class GameEngineService {
   });
 
   /**
+   * Replaces local state with server-authoritative state (online mode).
+   * `lastMove`, when given, is appended to the move history (the server
+   * doesn't track history, only the pieces/turn/status).
+   */
+  syncState(state: GameState, lastMove?: Move): void {
+    const current = this._gameState();
+    const moveHistory = lastMove ? [...(current?.moveHistory ?? []), lastMove] : (current?.moveHistory ?? []);
+    const mustCapture = state.status === 'playing' && this.moveValidator.mustCapture(state.currentPlayer, state);
+
+    this._gameState.set({
+      ...state,
+      moveHistory,
+      mustCapture,
+      selectedPiece: undefined,
+      validMoves: [],
+    });
+  }
+
+  /**
    * Starts a new game
    */
   startNewGame(timeMode: TimeMode = 'unlimited'): void {

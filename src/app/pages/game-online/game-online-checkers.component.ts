@@ -5,13 +5,12 @@ import {
   OnInit,
   OnDestroy,
   signal,
-  effect,
   computed,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { GameEngineService, OnlineService, TimerService, ReplayService, RankingService } from '../../core/services';
-import { ChatMessage, PlayerColor, TimeMode, TIME_MODES } from '../../core/models';
+import { ChatMessage, GameState, Move, PlayerColor, TimeMode, TIME_MODES } from '../../core/models';
 import {
   BoardComponent,
   MoveHistoryComponent,
@@ -19,6 +18,21 @@ import {
   GameTimerComponent,
   GameOverModalComponent,
 } from '../../components';
+
+/** Server sends pieces/currentPlayer/status/winner only; the client fills in the rest. */
+function mapServerGameState(raw: { pieces: GameState['pieces']; currentPlayer: PlayerColor; status: 'playing' | 'finished'; winner?: PlayerColor }): GameState {
+  return {
+    pieces: raw.pieces,
+    currentPlayer: raw.currentPlayer,
+    status: raw.status,
+    // ponytail: server only detects "opponent has zero pieces" today, not stalemate,
+    // so this is always the real reason whenever status is actually 'finished'.
+    result: raw.status === 'finished' ? { winner: raw.winner!, reason: 'no-pieces' } : undefined,
+    moveHistory: [],
+    validMoves: [],
+    mustCapture: false,
+  };
+}
 
 @Component({
   selector: 'app-game-online-checkers',
@@ -81,9 +95,9 @@ import {
           }
         </aside>
 
-        <section class="board-section" aria-label="Plateau de jeu">
+        <section class="board-section" [class.locked]="!isMyTurn()" aria-label="Plateau de jeu">
           @if (roomStatus() === 'playing') {
-            <app-board />
+            <app-board [flipped]="myColor() === 'black'" (moveExecuted)="onMoveExecuted($event)" />
           } @else {
             <div class="waiting-screen">
               <div class="waiting-content">
@@ -377,6 +391,11 @@ import {
       display: flex;
       align-items: flex-start;
       justify-content: center;
+
+      &.locked app-board {
+        pointer-events: none;
+        opacity: 0.75;
+      }
     }
 
     .waiting-screen {
@@ -673,17 +692,21 @@ export class GameOnlineCheckersComponent implements OnInit, OnDestroy {
     return this.myColor() === 'white' ? 'black' : 'white';
   });
 
+  readonly isMyTurn = computed(() => this.gameEngine.currentPlayer() === this.myColor());
+
   constructor() {
-    // Watch for game state updates from server
-    effect(() => {
-      const room = this.currentRoom();
-      if (room?.status === 'playing') {
-        // Initialize game when it starts
-        if (this.status() !== 'playing') {
-          this.gameEngine.startNewGame();
-        }
-      }
-    });
+    // Server is authoritative: the initial board comes with 'game:started',
+    // every move afterwards (including our own, echoed back) comes with 'game:move'.
+    const socket = this.onlineService.getSocket();
+    if (socket) {
+      socket.on('game:started', ({ initialState }: { initialState: unknown }) => {
+        this.gameEngine.syncState(mapServerGameState(initialState as any));
+      });
+
+      socket.on('game:move', ({ move, gameState }: { move: Move; gameState: unknown }) => {
+        this.gameEngine.syncState(mapServerGameState(gameState as any), move);
+      });
+    }
   }
 
   ngOnInit(): void {
@@ -715,6 +738,10 @@ export class GameOnlineCheckersComponent implements OnInit, OnDestroy {
   toggleReady(): void {
     this.isReady.update((v) => !v);
     this.onlineService.setReady(this.isReady());
+  }
+
+  onMoveExecuted(move: Move): void {
+    this.onlineService.sendMove(move);
   }
 
   copyRoomCode(): void {

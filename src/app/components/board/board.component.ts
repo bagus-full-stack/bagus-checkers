@@ -4,11 +4,13 @@ import {
   inject,
   computed,
   input,
+  output,
 } from '@angular/core';
 import { CdkDrag, CdkDragDrop, CdkDragPlaceholder, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import {
   Position,
   Piece,
+  Move,
   createPosition,
   positionsEqual,
 } from '../../core/models';
@@ -160,6 +162,9 @@ export class BoardComponent {
   /** Whether the board is flipped (for playing as black) */
   readonly flipped = input(false);
 
+  /** Fires with the applied move right after it's executed locally (for online sync). */
+  readonly moveExecuted = output<Move>();
+
   readonly boardSize = this.variantService.boardSize;
 
   readonly rows = computed(() => {
@@ -243,8 +248,9 @@ export class BoardComponent {
   }
 
   onSquareClick(position: Position): void {
-    if (this.isValidTarget(position)) {
-      this.gameEngine.moveTo(position);
+    const move = this.validMoves().find((m) => positionsEqual(m.to, position));
+    if (move && this.gameEngine.moveTo(position)) {
+      this.moveExecuted.emit(move);
     }
   }
 
@@ -256,7 +262,10 @@ export class BoardComponent {
     this.gameEngine.selectPiece(piece);
 
     // Try to move to the target position
-    this.gameEngine.moveTo(targetPosition);
+    const move = this.validMoves().find((m) => positionsEqual(m.to, targetPosition));
+    if (move && this.gameEngine.moveTo(targetPosition)) {
+      this.moveExecuted.emit(move);
+    }
   }
 }
 
