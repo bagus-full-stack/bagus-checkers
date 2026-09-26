@@ -336,7 +336,11 @@ export class RankingService {
     this._isOnline.set(false);
 
     if (this.isBrowser) {
-      localStorage.removeItem(PROFILE_STORAGE_KEY);
+      try {
+        localStorage.removeItem(PROFILE_STORAGE_KEY);
+      } catch {
+        console.warn('Failed to clear user profile');
+      }
     }
   }
 

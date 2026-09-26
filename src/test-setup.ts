@@ -16,3 +16,11 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
     }),
   });
 }
+
+// jsdom doesn't implement HTMLMediaElement.play() - it leaves it returning
+// undefined instead of a Promise, which breaks any code (like AudioService)
+// that calls `.play().catch(...)`.
+if (typeof window !== 'undefined' && window.HTMLMediaElement) {
+  window.HTMLMediaElement.prototype.play = () => Promise.resolve();
+  window.HTMLMediaElement.prototype.pause = () => {};
+}
