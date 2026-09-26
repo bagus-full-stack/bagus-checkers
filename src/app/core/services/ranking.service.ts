@@ -244,15 +244,52 @@ export class RankingService {
 
     this._userProfile.set(updated);
 
-    if (this._isOnline()) {
-      await this.supabaseService.updateUserRating(profile.id, newRating, result);
-    } else {
-      this.saveProfile(updated);
-    }
+    // ponytail: rating is only persisted to Supabase for ranked matches, via
+    // recordRankedGameResult() below, which needs the opponent's real user id
+    // so the server can recompute the ELO delta itself (see record_game_result
+    // in supabase/schema.sql - direct column writes are blocked by RLS/grants).
+    // Until online ranked matches call that, results are tracked locally only.
+    this.saveProfile(updated);
 
     this.updateLeaderboardEntry(updated);
 
     return eloResult;
+  }
+
+  /**
+   * Records a ranked online result against a known Supabase opponent. The
+   * server recomputes both players' ELO from their stored ratings - this
+   * call can't be used to forge a rating, only to report who played whom.
+   */
+  async recordRankedGameResult(
+    opponentId: string,
+    playerColor: 'white' | 'black',
+    result: 'win' | 'loss' | 'draw',
+    variant: string,
+    totalMoves: number,
+    duration: number,
+    movesJson: string,
+    materialHistoryJson: string
+  ): Promise<{ newRating: number; ratingChange: number } | null> {
+    if (!this._isOnline()) return null;
+
+    const outcome = await this.supabaseService.recordGameResult(
+      opponentId,
+      playerColor,
+      result,
+      variant,
+      totalMoves,
+      duration,
+      movesJson,
+      materialHistoryJson
+    );
+    if (!outcome) return null;
+
+    await this.loadProfileFromSupabase();
+    const updated = this._userProfile();
+    if (updated) this.updateLeaderboardEntry(updated);
+
+    return outcome;
   }
 
   /**

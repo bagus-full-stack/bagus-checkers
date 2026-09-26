@@ -326,35 +326,41 @@ export class SupabaseService {
   }
 
   /**
-   * Updates user rating after a game
+   * Records a ranked game result. The rating delta is computed server-side
+   * (record_game_result Postgres function) from each player's stored rating -
+   * the client cannot set rating/wins/history to arbitrary values, it can only
+   * report who it played and who won.
    */
-  async updateUserRating(
-    userId: string,
-    newRating: number,
-    result: 'win' | 'loss' | 'draw'
-  ): Promise<void> {
-    const profile = await this.getUserProfile(userId);
-    if (!profile) return;
+  async recordGameResult(
+    opponentId: string,
+    myColor: 'white' | 'black',
+    result: 'win' | 'loss' | 'draw',
+    variant: string,
+    totalMoves: number,
+    duration: number,
+    movesJson: string,
+    materialHistoryJson: string
+  ): Promise<{ newRating: number; ratingChange: number } | null> {
+    if (!this.supabase) return null;
 
-    const updates: Partial<DbUserProfile> = {
-      rating: newRating,
-      games_played: profile.games_played + 1,
-      last_played_at: new Date().toISOString(),
-    };
+    const { data, error } = await this.supabase.rpc('record_game_result', {
+      p_opponent_id: opponentId,
+      p_my_color: myColor,
+      p_result: result,
+      p_variant: variant,
+      p_total_moves: totalMoves,
+      p_duration: duration,
+      p_moves_json: movesJson,
+      p_material_history_json: materialHistoryJson,
+    });
 
-    if (result === 'win') {
-      updates.wins = profile.wins + 1;
-      updates.win_streak = profile.win_streak + 1;
-      updates.best_win_streak = Math.max(profile.best_win_streak, updates.win_streak);
-    } else if (result === 'loss') {
-      updates.losses = profile.losses + 1;
-      updates.win_streak = 0;
-    } else {
-      updates.draws = profile.draws + 1;
-      updates.win_streak = 0;
+    if (error) {
+      console.error('Error recording game result:', error);
+      return null;
     }
 
-    await this.updateUserProfile(userId, updates);
+    const row = data?.[0];
+    return row ? { newRating: row.new_rating, ratingChange: row.rating_change } : null;
   }
 
   // ==================== Leaderboard ====================
@@ -402,29 +408,6 @@ export class SupabaseService {
   }
 
   // ==================== Game History ====================
-
-  /**
-   * Saves a game to history
-   */
-  async saveGameHistory(game: Omit<DbGameHistory, 'id' | 'played_at'>): Promise<DbGameHistory | null> {
-    if (!this.supabase) return null;
-
-    const { data, error } = await this.supabase
-      .from('game_history')
-      .insert({
-        ...game,
-        played_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error saving game:', error);
-      return null;
-    }
-
-    return data;
-  }
 
   /**
    * Gets game history for a user

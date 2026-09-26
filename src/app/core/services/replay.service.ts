@@ -13,7 +13,7 @@ import {
 import { GameState } from '../models/game-state.model';
 import { Move } from '../models/move.model';
 import { PlayerColor } from '../models/piece.model';
-import { SupabaseService, DbGameHistory } from './supabase.service';
+import { SupabaseService } from './supabase.service';
 
 const STORAGE_KEY = 'checkers_saved_games';
 const MAX_SAVED_GAMES = 50;
@@ -76,13 +76,7 @@ export class ReplayService {
     winner: PlayerColor | 'draw' | null,
     reason: string,
     variant: string,
-    duration: number,
-    whitePlayerId?: string,
-    blackPlayerId?: string,
-    whiteRatingBefore?: number,
-    blackRatingBefore?: number,
-    whiteRatingAfter?: number,
-    blackRatingAfter?: number
+    duration: number
   ): Promise<string> {
     const id = generateGameId();
     const metadata: SavedGameMetadata = {
@@ -103,34 +97,9 @@ export class ReplayService {
       materialHistory,
     };
 
-    // Save to Supabase if online
-    if (this._isOnline() && whitePlayerId && blackPlayerId) {
-      const dbGame: Omit<DbGameHistory, 'id' | 'played_at'> = {
-        white_player_id: whitePlayerId,
-        black_player_id: blackPlayerId,
-        white_player_name: whitePlayer,
-        black_player_name: blackPlayer,
-        winner: winner as 'white' | 'black' | 'draw' | null,
-        reason: reason,
-        variant: variant,
-        total_moves: moves.length,
-        duration: duration,
-        moves_json: JSON.stringify(moves),
-        material_history_json: JSON.stringify(materialHistory),
-        white_rating_before: whiteRatingBefore ?? 1200,
-        black_rating_before: blackRatingBefore ?? 1200,
-        white_rating_after: whiteRatingAfter ?? 1200,
-        black_rating_after: blackRatingAfter ?? 1200,
-      };
-
-      const savedGame = await this.supabaseService.saveGameHistory(dbGame);
-      if (savedGame) {
-        await this.loadGamesFromSupabase();
-        return savedGame.id;
-      }
-    }
-
-    // Fallback to localStorage
+    // Ranked games are recorded server-side via SupabaseService.recordGameResult
+    // (see ranking.service.ts) so rating/history can't be forged from the client.
+    // This replay export is always local.
     this.storeGame(game);
     return id;
   }

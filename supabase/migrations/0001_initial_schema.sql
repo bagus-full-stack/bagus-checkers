@@ -171,4 +171,3 @@ VALUES
   (uuid_generate_v4(), 'testuser2', 'Test User 2', 1320, 18, 9, 7, 2),
   (uuid_generate_v4(), 'testuser3', 'Test User 3', 1550, 42, 28, 12, 2);
 */
-
