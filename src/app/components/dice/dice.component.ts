@@ -35,8 +35,8 @@ import { Component, ChangeDetectionStrategy, input, output } from '@angular/core
       height: 60px;
       padding: 0;
       border-radius: 12px;
-      background: var(--surface-2);
-      border: 2px solid var(--border);
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -78,16 +78,16 @@ import { Component, ChangeDetectionStrategy, input, output } from '@angular/core
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: var(--text);
+      background: var(--text-primary);
       justify-self: center;
       align-self: center;
     }
 
     @keyframes roll {
       0% { transform: rotate(0deg) scale(1); }
-      25% { transform: rotate(90deg) scale(1.1); background-color: var(--primary); }
+      25% { transform: rotate(90deg) scale(1.1); background-color: var(--accent-color); }
       50% { transform: rotate(180deg) scale(1); }
-      75% { transform: rotate(270deg) scale(1.1); background-color: var(--primary-dark); }
+      75% { transform: rotate(270deg) scale(1.1); background-color: var(--accent-hover); }
       100% { transform: rotate(360deg) scale(1); }
     }
   `]

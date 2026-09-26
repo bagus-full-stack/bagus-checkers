@@ -66,6 +66,10 @@ export class RoomCreateDto {
   @IsOptional()
   @IsString()
   variant?: string;
+
+  @IsOptional()
+  @IsIn(['classic', 'random'])
+  layout?: 'classic' | 'random';
 }
 
 export class RoomJoinDto {

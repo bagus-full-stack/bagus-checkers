@@ -104,7 +104,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       player,
       data.name,
       data.isPrivate,
-      data.variant || 'international'
+      data.variant || 'international',
+      data.layout
     );
 
     client.join(room.id);

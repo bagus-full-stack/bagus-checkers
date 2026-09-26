@@ -25,7 +25,7 @@ import { PieceComponent } from '../piece/piece.component';
             >
               @if (getPieceAt(row, col); as p) {
                 <app-piece
-                  class="ludo-piece-container"
+                  class="ludo-piece-slot"
                   [piece]="p"
                   [isSelected]="p.id === selectedPiece()?.id"
                   [isMovable]="isPieceMovable(p)"
@@ -80,7 +80,7 @@ import { PieceComponent } from '../piece/piece.component';
       border: 1px solid rgba(0,0,0,0.1);
     }
 
-    .ludo-piece-container {
+    .ludo-piece-slot {
       width: 80%;
       height: 80%;
       z-index: 5;

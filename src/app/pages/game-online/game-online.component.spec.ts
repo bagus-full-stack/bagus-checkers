@@ -107,7 +107,7 @@ describe('GameOnlineComponent', () => {
     expect(fixture.nativeElement.querySelector('app-game-online-checkers')).not.toBeNull();
   });
 
-  it('shows the in-development message for a ludo room', () => {
+  it('shows the ludo interface once connected to a ludo room', () => {
     const onlineService = configure();
     onlineService.connect('Alice');
     mockSocket.connected = true;
@@ -115,7 +115,7 @@ describe('GameOnlineComponent', () => {
     mockSocket.trigger('room:joined', { room: room({ variant: 'ludo' }), player: { id: 'p1', name: 'Alice' } });
 
     const fixture = createFixture();
-    expect(fixture.nativeElement.textContent).toContain('Ludo interface is in development');
+    expect(fixture.nativeElement.querySelector('app-game-online-ludo')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-game-online-checkers')).toBeNull();
   });
 });

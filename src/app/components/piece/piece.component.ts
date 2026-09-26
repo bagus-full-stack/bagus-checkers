@@ -85,26 +85,26 @@ import { Piece } from '../../core/models';
         outline: 3px solid var(--board-highlight, #4f46e5);
         outline-offset: 2px;
       }
-    }
 
-    &.red {
-      background: radial-gradient(145deg, #fca5a5, #b91c1c);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
-    }
+      &.red {
+        background: radial-gradient(145deg, #fca5a5, #b91c1c);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+      }
 
-    &.blue {
-      background: radial-gradient(145deg, #93c5fd, #1d4ed8);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
-    }
+      &.blue {
+        background: radial-gradient(145deg, #93c5fd, #1d4ed8);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+      }
 
-    &.yellow {
-      background: radial-gradient(145deg, #fde047, #b45309);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
-    }
+      &.yellow {
+        background: radial-gradient(145deg, #fde047, #b45309);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+      }
 
-    &.green {
-      background: radial-gradient(145deg, #86efac, #15803d);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+      &.green {
+        background: radial-gradient(145deg, #86efac, #15803d);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+      }
     }
 
     .crown {
@@ -164,10 +164,18 @@ export class PieceComponent {
     return classes.join(' ');
   });
 
+  private static readonly COLOR_LABELS: Record<Piece['color'], string> = {
+    white: 'blanc',
+    black: 'noir',
+    red: 'rouge',
+    blue: 'bleu',
+    yellow: 'jaune',
+    green: 'vert',
+  };
+
   protected readonly ariaLabel = computed(() => {
     const piece = this.piece();
     const type = piece.type === 'king' ? 'Dame' : 'Pion';
-    const color = piece.color === 'white' ? 'blanc' : 'noir';
-    return `${type} ${color}`;
+    return `${type} ${PieceComponent.COLOR_LABELS[piece.color]}`;
   });
 }

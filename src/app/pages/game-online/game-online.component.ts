@@ -3,15 +3,16 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { OnlineService } from '../../core/services';
 import { GameOnlineCheckersComponent } from './game-online-checkers.component';
+import { GameOnlineLudoComponent } from './game-online-ludo.component';
 
 @Component({
   selector: 'app-game-online',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, GameOnlineCheckersComponent],
+  imports: [CommonModule, GameOnlineCheckersComponent, GameOnlineLudoComponent],
   template: `
     @if (isConnected() && currentRoom()) {
       @if (currentRoom()?.variant === 'ludo') {
-        <h1 style="color:white; text-align:center; margin-top:50px;">Ludo interface is in development!</h1>
+        <app-game-online-ludo></app-game-online-ludo>
       } @else {
         <app-game-online-checkers></app-game-online-checkers>
       }
