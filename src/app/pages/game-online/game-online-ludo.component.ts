@@ -5,19 +5,34 @@ import {
   OnInit,
   OnDestroy,
   signal,
-  effect,
   computed,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { OnlineService, TimerService, ReplayService, RankingService, LudoEngineService } from '../../core/services';
 import { ChatMessage, PlayerColor, TimeMode, TIME_MODES, Piece } from '../../core/models';
+import { LudoGameState } from '../../core/models/ludo.model';
 import {
   LudoBoardComponent,
   DiceComponent,
   GameInfoLudoComponent,
   GameOverModalComponent,
 } from '../../components';
+
+/** Server sends the same shape minus moveHistory/result (client derives those). */
+function mapServerLudoState(raw: Omit<LudoGameState, 'result' | 'moveHistory'> & { winner?: PlayerColor }): LudoGameState {
+  return {
+    pieces: raw.pieces,
+    currentPlayer: raw.currentPlayer,
+    status: raw.status,
+    result: raw.status === 'finished' ? { winner: raw.winner!, reason: 'all-pieces-home' } : undefined,
+    moveHistory: [],
+    phase: raw.phase,
+    lastDiceRoll: raw.lastDiceRoll,
+    consecutiveSixes: raw.consecutiveSixes,
+    players: raw.players,
+  };
+}
 
 @Component({
   selector: 'app-game-online-ludo',
@@ -693,24 +708,16 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
   });
 
   constructor() {
-    // Watch for game state updates from server
-    effect(() => {
-      const room = this.currentRoom();
-      if (room?.status === 'playing') {
-        if (this.status() !== 'playing') {
-          // Get player colors assigned in room
-          const colors = room.players?.map(p => p.color!) ?? ['red', 'green'];
-          this.ludoEngine.startNewGame(colors);
-        }
-      }
-    });
-
-    // Sub to external sockets for move/roll sync
+    // Server is authoritative for all Ludo state: the initial board comes with
+    // 'game:started', every roll/move afterwards comes with 'game:ludo:update'.
     const socket = this.onlineService.getSocket();
     if (socket) {
-      socket.on('game:ludo:roll', (data) => {
-        // sync roll from other player
-        // for now just local simulate for MVP
+      socket.on('game:started', ({ initialState }: { initialState: unknown }) => {
+        this.ludoEngine.syncState(mapServerLudoState(initialState as any));
+      });
+
+      socket.on('game:ludo:update', ({ gameState }: { gameState: unknown }) => {
+        this.ludoEngine.syncState(mapServerLudoState(gameState as any));
       });
     }
   }
@@ -746,11 +753,8 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
     const option = this.ludoEngine.movableOptions().find(o => o.piece.id === piece.id);
     if (!option) return;
 
-    const from = option.piece.position;
-    const moved = this.ludoEngine.moveTo(option.piece, option.destination);
-    if (moved) {
-      this.onlineService.sendMove({ piece: option.piece, from, to: option.destination, capturedPieces: [], isPromotion: false });
-    }
+    // Server validates and re-applies the move; the resulting state arrives via game:ludo:update.
+    this.onlineService.sendLudoMove(piece.id);
   }
 
   onRollDice(): void {
@@ -758,15 +762,10 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
 
     this.isRollingDice.set(true);
 
-    // Simulate dice animation duration
+    // Simulate dice animation duration; the actual roll is generated server-side.
     setTimeout(() => {
       this.isRollingDice.set(false);
-      this.ludoEngine.rollDice();
-
-      const val = this.diceRoll();
-      // Notify others of the roll
-      this.onlineService.getSocket()?.emit('game:ludo:roll', { roomId: this.roomId(), roll: val });
-
+      this.onlineService.sendLudoRoll();
     }, 500);
   }
 

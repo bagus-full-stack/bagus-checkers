@@ -35,6 +35,8 @@ export interface Piece {
   color: PlayerColor;
   type: 'pawn' | 'king' | 'token';
   position: Position;
+  /** Ludo only: steps taken since leaving base. undefined = still in base. */
+  trackIndex?: number;
 }
 
 export interface Move {

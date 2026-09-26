@@ -23,6 +23,8 @@ import {
   GameMoveDto,
   GameResignDto,
   ChatSendDto,
+  LudoRollDto,
+  LudoMoveDto,
 } from './dto';
 
 @WebSocketGateway({
@@ -185,7 +187,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (room.status === 'ready') {
       const startedRoom = this.roomService.startGame(room.id);
       if (startedRoom) {
-        const initialState = this.gameService.createInitialState();
+        const initialState = this.gameService.createInitialState(
+          room.variant,
+          room.layout,
+          room.players?.map((p) => p.color!)
+        );
         this.roomService.updateGameState(room.id, initialState);
 
         this.server.to(room.id).emit('game:started', {
@@ -250,6 +256,66 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
 
       this.logger.log(`Game ended in room ${room.id}, winner: ${newState.winner}`);
+    }
+  }
+
+  @SubscribeMessage('game:ludo:roll')
+  handleLudoRoll(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: LudoRollDto
+  ) {
+    const player = this.players.get(client.id);
+    if (!player) return;
+
+    const room = this.roomService.getRoom(data.roomId);
+    if (!room || room.status !== 'playing' || room.variant !== 'ludo') return;
+
+    const playerColor = room.players?.find((p) => p.id === player.id)?.color;
+    if (!playerColor) return;
+
+    const currentState = room.gameState as any;
+    if (!currentState || currentState.currentPlayer !== playerColor || currentState.phase !== 'rolling') {
+      client.emit('error', { code: 'INVALID_MOVE', message: 'Not your turn to roll' });
+      return;
+    }
+
+    const { state: newState } = this.gameService.rollLudoDice(currentState);
+    this.roomService.updateGameState(room.id, newState);
+
+    this.server.to(room.id).emit('game:ludo:update', { gameState: newState });
+  }
+
+  @SubscribeMessage('game:ludo:move')
+  handleLudoMove(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: LudoMoveDto
+  ) {
+    const player = this.players.get(client.id);
+    if (!player) return;
+
+    const room = this.roomService.getRoom(data.roomId);
+    if (!room || room.status !== 'playing' || room.variant !== 'ludo') return;
+
+    const playerColor = room.players?.find((p) => p.id === player.id)?.color;
+    if (!playerColor) return;
+
+    const currentState = room.gameState as any;
+    const newState = this.gameService.applyLudoMove(currentState, playerColor, data.pieceId);
+    if (!newState) {
+      client.emit('error', { code: 'INVALID_MOVE', message: 'Invalid move' });
+      return;
+    }
+
+    this.roomService.updateGameState(room.id, newState);
+    this.server.to(room.id).emit('game:ludo:update', { gameState: newState });
+
+    if (newState.status === 'finished') {
+      this.roomService.endGame(room.id);
+      this.server.to(room.id).emit('game:ended', {
+        result: { winner: newState.winner, reason: 'all-pieces-home' },
+      });
+
+      this.logger.log(`Ludo game ended in room ${room.id}, winner: ${newState.winner}`);
     }
   }
 

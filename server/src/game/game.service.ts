@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Move, Piece, Position, PlayerColor } from './types';
+import { Move, Piece, PlayerColor } from './types';
 import { getCheckersVariant, getValidMovesForPiece } from './checkers-rules';
+import { createLudoState, rollLudoDice, applyLudoMove, LudoGameState } from './ludo-rules';
 
 function sameCapturedPieces(a: Piece[], b: Piece[]): boolean {
   if (a.length !== b.length) return false;
@@ -18,6 +19,7 @@ interface GameState {
   phase?: 'rolling' | 'moving';
   players?: PlayerColor[];
   consecutiveSixes?: number;
+  lastDiceRoll?: number;
 }
 
 @Injectable()
@@ -25,12 +27,22 @@ export class GameService {
   /**
    * Creates initial game state depending on variant
    */
-  createInitialState(variant: string = 'international', layout?: 'classic' | 'random'): GameState {
+  createInitialState(variant: string = 'international', layout?: 'classic' | 'random', players?: PlayerColor[]): GameState {
     if (variant === 'ludo') {
-      return this.createLudoState();
+      return createLudoState(players && players.length > 0 ? players : ['red', 'green', 'yellow', 'blue']);
     }
 
     return this.createCheckersState();
+  }
+
+  /** Server rolls the die for the current player - ludo variant only. */
+  rollLudoDice(state: GameState): { roll: number; state: GameState } {
+    return rollLudoDice(state as LudoGameState);
+  }
+
+  /** Validates and applies a ludo token move. Returns null if illegal. */
+  applyLudoMove(state: GameState, playerColor: PlayerColor, pieceId: string): GameState | null {
+    return applyLudoMove(state as LudoGameState, playerColor, pieceId);
   }
 
   private createCheckersState(): GameState {
@@ -72,44 +84,6 @@ export class GameService {
     };
   }
 
-  private createLudoState(): GameState {
-    const players: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
-    const pieces: Piece[] = [];
-
-    // Ludo base starting positions for 4 players (corners of a 15x15 board)
-    const bases: Record<PlayerColor, Position[]> = {
-      red:    [{row: 2, col: 2}, {row: 2, col: 3}, {row: 3, col: 2}, {row: 3, col: 3}],
-      green:  [{row: 2, col: 11}, {row: 2, col: 12}, {row: 3, col: 11}, {row: 3, col: 12}],
-      yellow: [{row: 11, col: 11}, {row: 11, col: 12}, {row: 12, col: 11}, {row: 12, col: 12}],
-      blue:   [{row: 11, col: 2}, {row: 11, col: 3}, {row: 12, col: 2}, {row: 12, col: 3}],
-      white: [], black: [] // fallback
-    };
-
-    let pieceId = 0;
-    players.forEach(color => {
-      const basePositions = bases[color];
-      if (basePositions) {
-        basePositions.forEach(pos => {
-          pieces.push({
-            id: `${color}-${pieceId++}`,
-            color,
-            type: 'token',
-            position: pos
-          });
-        });
-      }
-    });
-
-    return {
-      pieces,
-      currentPlayer: 'red',
-      status: 'playing',
-      phase: 'rolling',
-      players,
-      consecutiveSixes: 0
-    };
-  }
-
   /**
    * Validates and applies a move
    */
@@ -119,6 +93,11 @@ export class GameService {
     playerColor: PlayerColor,
     variant: string = 'international'
   ): GameState | null {
+    // Ludo moves go through applyLudoMove() via the dedicated game:ludo:move event.
+    if (variant === 'ludo') {
+      return null;
+    }
+
     // Validate it's the player's turn
     if (state.currentPlayer !== playerColor) {
       return null;
@@ -130,26 +109,22 @@ export class GameService {
       return null;
     }
 
-    // Ludo tokens aren't checkers pieces and have no board-rule engine here yet
-    // (online Ludo isn't wired through this path - see createInitialState callers).
-    if (piece.type !== 'token') {
-      const legalMoves = getValidMovesForPiece(
-        piece,
-        { pieces: state.pieces },
-        getCheckersVariant(variant)
-      );
-      const legalMove = legalMoves.find(
-        (m) =>
-          m.to.row === move.to.row &&
-          m.to.col === move.to.col &&
-          sameCapturedPieces(m.capturedPieces, move.capturedPieces)
-      );
-      if (!legalMove) {
-        return null;
-      }
-      // Trust the server-computed move, not the client-submitted one.
-      move = legalMove;
+    const legalMoves = getValidMovesForPiece(
+      piece,
+      { pieces: state.pieces },
+      getCheckersVariant(variant)
+    );
+    const legalMove = legalMoves.find(
+      (m) =>
+        m.to.row === move.to.row &&
+        m.to.col === move.to.col &&
+        sameCapturedPieces(m.capturedPieces, move.capturedPieces)
+    );
+    if (!legalMove) {
+      return null;
     }
+    // Trust the server-computed move, not the client-submitted one.
+    move = legalMove;
 
     // Apply the move
     const newPieces = state.pieces

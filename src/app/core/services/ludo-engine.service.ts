@@ -59,6 +59,11 @@ export class LudoEngineService {
     return grid;
   });
 
+  /** Replaces local state with server-authoritative state (online mode). */
+  syncState(state: LudoGameState): void {
+    this._gameState.set(state);
+  }
+
   startNewGame(players: PlayerColor[] = ['red', 'green', 'yellow', 'blue']): void {
     const pieces: Piece[] = [];
     let pieceId = 0;

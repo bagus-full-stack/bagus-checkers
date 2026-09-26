@@ -95,6 +95,19 @@ export class GameMoveDto {
   move!: MoveDto;
 }
 
+export class LudoRollDto {
+  @IsString()
+  roomId!: string;
+}
+
+export class LudoMoveDto {
+  @IsString()
+  roomId!: string;
+
+  @IsString()
+  pieceId!: string;
+}
+
 export class GameResignDto {
   @IsString()
   roomId!: string;

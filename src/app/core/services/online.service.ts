@@ -133,6 +133,26 @@ export class OnlineService {
   }
 
   /**
+   * Roll the dice (Ludo) - server generates the value and broadcasts the result.
+   */
+  sendLudoRoll(): void {
+    const room = this._currentRoom();
+    if (room) {
+      this.socket?.emit('game:ludo:roll', { roomId: room.id });
+    }
+  }
+
+  /**
+   * Move a token (Ludo) - server validates and broadcasts the result.
+   */
+  sendLudoMove(pieceId: string): void {
+    const room = this._currentRoom();
+    if (room) {
+      this.socket?.emit('game:ludo:move', { roomId: room.id, pieceId });
+    }
+  }
+
+  /**
    * Resign the game
    */
   resign(): void {
