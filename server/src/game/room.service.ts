@@ -1,52 +1,87 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
+import { DatabaseSync } from 'node:sqlite';
 import { GameRoom, OnlinePlayer, RoomStatus } from './types';
 
-// ponytail: single-instance-only persistence (JSON snapshot on disk, reloaded
+// ponytail: single-instance-only persistence (SQLite file on disk, reloaded
 // on boot) so a restart doesn't wipe active games. Not a fix for horizontal
 // scaling across multiple server instances - that needs a shared store
 // (Redis/DB) instead, only worth building once there's actually more than
 // one server process.
-const STORE_PATH = path.join(process.cwd(), 'data', 'rooms.json');
+const STORE_PATH = path.join(process.cwd(), 'data', 'rooms.db');
 
 @Injectable()
-export class RoomService implements OnModuleInit {
+export class RoomService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RoomService.name);
   private rooms = new Map<string, GameRoom>();
   private playerRooms = new Map<string, string>(); // playerId -> roomId
   private saveTimer: NodeJS.Timeout | null = null;
+  private db!: DatabaseSync;
 
   onModuleInit(): void {
-    try {
-      const raw = fs.readFileSync(STORE_PATH, 'utf-8');
-      const data = JSON.parse(raw) as {
-        rooms: [string, GameRoom][];
-        playerRooms: [string, string][];
-      };
-      this.rooms = new Map(data.rooms);
-      this.playerRooms = new Map(data.playerRooms);
-      this.logger.log(`Restored ${this.rooms.size} room(s) from disk`);
-    } catch {
-      // No snapshot yet, or unreadable - start fresh.
+    fs.mkdirSync(path.dirname(STORE_PATH), { recursive: true });
+    this.db = new DatabaseSync(STORE_PATH);
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS player_rooms (player_id TEXT PRIMARY KEY, room_id TEXT NOT NULL);
+    `);
+
+    const roomRows = this.db.prepare('SELECT id, data FROM rooms').all() as { id: string; data: string }[];
+    this.rooms = new Map(roomRows.map((row) => [row.id, JSON.parse(row.data) as GameRoom]));
+
+    const playerRows = this.db.prepare('SELECT player_id, room_id FROM player_rooms').all() as {
+      player_id: string;
+      room_id: string;
+    }[];
+    this.playerRooms = new Map(playerRows.map((row) => [row.player_id, row.room_id]));
+
+    this.logger.log(`Restored ${this.rooms.size} room(s) from disk`);
+  }
+
+  onModuleDestroy(): void {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
     }
+    this.flush();
+    this.db.close();
   }
 
   private schedulePersist(): void {
     if (this.saveTimer) return;
     this.saveTimer = setTimeout(() => {
       this.saveTimer = null;
-      const data = {
-        rooms: Array.from(this.rooms.entries()),
-        playerRooms: Array.from(this.playerRooms.entries()),
-      };
-      fs.mkdir(path.dirname(STORE_PATH), { recursive: true }, () => {
-        fs.writeFile(STORE_PATH, JSON.stringify(data), (err) => {
-          if (err) this.logger.error('Failed to persist rooms', err);
-        });
-      });
+      this.flush();
     }, 200);
+  }
+
+  // ponytail: replaces both tables wholesale inside one transaction on every
+  // flush - simple and atomic (a crash mid-write leaves the previous commit
+  // intact, unlike the old JSON snapshot). Upserting only the changed rooms
+  // would cut write volume further if the room count gets large.
+  private flush(): void {
+    try {
+      this.db.exec('BEGIN');
+      this.db.exec('DELETE FROM rooms');
+      this.db.exec('DELETE FROM player_rooms');
+
+      const insertRoom = this.db.prepare('INSERT INTO rooms (id, data) VALUES (?, ?)');
+      for (const [id, room] of this.rooms) {
+        insertRoom.run(id, JSON.stringify(room));
+      }
+
+      const insertPlayer = this.db.prepare('INSERT INTO player_rooms (player_id, room_id) VALUES (?, ?)');
+      for (const [playerId, roomId] of this.playerRooms) {
+        insertPlayer.run(playerId, roomId);
+      }
+
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      this.logger.error('Failed to persist rooms', err as Error);
+    }
   }
 
   createRoom(

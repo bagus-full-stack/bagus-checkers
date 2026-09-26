@@ -83,7 +83,7 @@ server/
 │   ├── game/
 │   │   ├── game.gateway.ts   # WebSocket Gateway
 │   │   ├── game.service.ts   # Logique de jeu serveur
-│   │   └── room.service.ts   # Gestion des salles
+│   │   └── room.service.ts   # Gestion des salles (persistées en SQLite, data/rooms.db)
 │   └── main.ts               # Point d'entrée NestJS
 ```
 
@@ -102,6 +102,7 @@ L'IA utilise plusieurs algorithmes selon le niveau de difficulté :
 - **Drag & Drop:** Angular CDK
 - **Backend:** NestJS
 - **WebSocket:** Socket.IO
+- **Persistance des salles:** SQLite (`node:sqlite`) - snapshot rechargé au démarrage du serveur
 - **State Management:** Signals (reactive)
 
 ## 📝 Règles du jeu (Dames Internationales)

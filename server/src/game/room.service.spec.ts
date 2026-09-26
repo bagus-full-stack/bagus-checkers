@@ -12,7 +12,7 @@ function player(id: string, name: string): OnlinePlayer {
 }
 
 function main(): void {
-  const storePath = path.join(process.cwd(), 'data', 'rooms.json');
+  const storePath = path.join(process.cwd(), 'data', 'rooms.db');
   fs.rmSync(storePath, { force: true });
 
   const service = new RoomService();
@@ -20,17 +20,9 @@ function main(): void {
   const room = service.createRoom(player('p1', 'Alice'), 'Test room', false, 'international');
   service.joinRoom(room.id, player('p2', 'Bob'));
 
-  // Persist is debounced (setTimeout); write synchronously here to check the
-  // on-disk shape without waiting on the timer.
-  (service as any).saveTimer && clearTimeout((service as any).saveTimer);
-  fs.mkdirSync(path.dirname(storePath), { recursive: true });
-  fs.writeFileSync(
-    storePath,
-    JSON.stringify({
-      rooms: Array.from((service as any).rooms.entries()),
-      playerRooms: Array.from((service as any).playerRooms.entries()),
-    })
-  );
+  // Persist is debounced (setTimeout); onModuleDestroy flushes synchronously
+  // and closes the file so the restored instance can reopen it.
+  service.onModuleDestroy();
 
   const restored = new RoomService();
   restored.onModuleInit();
@@ -38,6 +30,7 @@ function main(): void {
   assert(!!restoredRoom, 'room should survive a simulated restart');
   assert(restoredRoom!.guestPlayer?.id === 'p2', 'guest player should be restored');
   assert(restored.getRoomByPlayerId('p1')?.id === room.id, 'playerRooms index should be restored');
+  restored.onModuleDestroy();
 
   fs.rmSync(storePath, { force: true });
   console.log('room.service persistence: all assertions passed');
