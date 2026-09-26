@@ -87,22 +87,22 @@ import { Piece } from '../../core/models';
       }
 
       &.red {
-        background: radial-gradient(145deg, #fca5a5, #b91c1c);
+        background: linear-gradient(145deg, #fca5a5, #b91c1c);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
       }
 
       &.blue {
-        background: radial-gradient(145deg, #93c5fd, #1d4ed8);
+        background: linear-gradient(145deg, #93c5fd, #1d4ed8);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
       }
 
       &.yellow {
-        background: radial-gradient(145deg, #fde047, #b45309);
+        background: linear-gradient(145deg, #fde047, #b45309);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
       }
 
       &.green {
-        background: radial-gradient(145deg, #86efac, #15803d);
+        background: linear-gradient(145deg, #86efac, #15803d);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
       }
     }
