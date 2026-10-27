@@ -90,7 +90,7 @@ describe('LudoEngineService', () => {
       expect(roll).toBe(3);
       expect(service.currentPlayer()).toBe('green');
       expect(service.phase()).toBe('rolling');
-      expect(service.diceRoll()).toBeUndefined();
+      expect(service.diceRoll()).toBe(3); // the player still sees what was rolled
     });
 
     it('rolling a six with a piece in base offers an exit move', () => {

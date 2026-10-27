@@ -166,12 +166,12 @@ function checkWinner(state: LudoGameState, color: PlayerColor): PlayerColor | nu
 
 function advanceTurn(state: LudoGameState, lastRoll: number): LudoGameState {
   if (lastRoll === 6 && state.consecutiveSixes < 3) {
-    return { ...state, phase: 'rolling' };
+    return { ...state, lastDiceRoll: lastRoll, phase: 'rolling' };
   }
 
   const currentIndex = state.players.indexOf(state.currentPlayer);
   const nextPlayer = state.players[(currentIndex + 1) % state.players.length];
-  return { ...state, currentPlayer: nextPlayer, phase: 'rolling', consecutiveSixes: 0, lastDiceRoll: undefined };
+  return { ...state, currentPlayer: nextPlayer, phase: 'rolling', consecutiveSixes: 0, lastDiceRoll: lastRoll };
 }
 
 /** Drops a leaver's tokens, hands over the turn if it was theirs, and ends the game when one player remains. */

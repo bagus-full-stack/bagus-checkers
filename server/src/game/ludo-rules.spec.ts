@@ -20,6 +20,7 @@ function main(): void {
     const { roll, state: next } = rollLudoDice(allBaseState);
     if (roll !== 6) {
       assert(next.currentPlayer === 'green', 'non-6 roll with no legal moves should pass turn to green');
+      assert(next.lastDiceRoll === roll, 'the rolled value must stay visible when the turn passes');
       skipped = true;
     }
   }

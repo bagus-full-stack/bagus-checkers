@@ -14,6 +14,7 @@ function createMockSocket() {
     on: vi.fn((event: string, cb: Listener) => {
       listeners.set(event, [...(listeners.get(event) ?? []), cb]);
     }),
+    off: vi.fn(),
     emit: vi.fn(),
     disconnect: vi.fn(),
     trigger(event: string, ...args: unknown[]) {

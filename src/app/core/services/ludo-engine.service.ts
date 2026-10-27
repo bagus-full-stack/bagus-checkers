@@ -230,6 +230,7 @@ export class LudoEngineService {
     if (lastRoll === 6 && state.consecutiveSixes < 3) {
       this._gameState.set({
         ...state,
+        lastDiceRoll: lastRoll,
         phase: 'rolling'
       });
       return;
@@ -244,7 +245,7 @@ export class LudoEngineService {
       currentPlayer: nextPlayer,
       phase: 'rolling',
       consecutiveSixes: 0,
-      lastDiceRoll: undefined
+      lastDiceRoll: lastRoll
     });
   }
 }

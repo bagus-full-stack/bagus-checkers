@@ -721,17 +721,15 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
   constructor() {
     // Server is authoritative for all Ludo state: the initial board comes with
     // 'game:started', every roll/move afterwards comes with 'game:ludo:update'.
-    const socket = this.onlineService.getSocket();
-    if (socket) {
-      socket.on('game:started', ({ initialState }: { initialState: unknown }) => {
-        this.ludoEngine.syncState(mapServerLudoState(initialState as any));
-      });
-
-      socket.on('game:ludo:update', ({ gameState }: { gameState: unknown }) => {
-        this.ludoEngine.syncState(mapServerLudoState(gameState as any));
-      });
-    }
+    this.socket?.on('game:started', this.onStarted);
+    this.socket?.on('game:ludo:update', this.onUpdate);
   }
+
+  private readonly socket = this.onlineService.getSocket();
+  private readonly onStarted = ({ initialState }: { initialState: unknown }) =>
+    this.ludoEngine.syncState(mapServerLudoState(initialState as any));
+  private readonly onUpdate = ({ gameState }: { gameState: unknown }) =>
+    this.ludoEngine.syncState(mapServerLudoState(gameState as any));
 
   ngOnInit(): void {
     // Check if we have a room, if not redirect to lobby
@@ -746,8 +744,10 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Don't automatically leave room on destroy
-    // User might just be navigating temporarily
+    // Don't automatically leave room on destroy (the user might just be navigating temporarily),
+    // but stop listening: a listener left behind would re-apply state into the next game's engine.
+    this.socket?.off('game:started', this.onStarted);
+    this.socket?.off('game:ludo:update', this.onUpdate);
   }
 
   isGameOver(): boolean {
@@ -768,7 +768,7 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
   }
 
   onRollDice(): void {
-    if (!this.isMyTurn() || this.phase() !== 'rolling') return;
+    if (!this.isMyTurn() || this.phase() !== 'rolling' || this.isRollingDice()) return;
 
     this.isRollingDice.set(true);
 

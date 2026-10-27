@@ -13,6 +13,9 @@ function createMockSocket() {
     on: vi.fn((event: string, cb: Listener) => {
       listeners.set(event, [...(listeners.get(event) ?? []), cb]);
     }),
+    off: vi.fn((event: string, cb: Listener) => {
+      listeners.set(event, (listeners.get(event) ?? []).filter((l) => l !== cb));
+    }),
     emit: vi.fn(),
     disconnect: vi.fn(),
     trigger(event: string, ...args: unknown[]) {
@@ -125,6 +128,18 @@ describe('GameOnlineLudoComponent', () => {
     });
     fixture.detectChanges();
     expect(ludoEngine.currentPlayer()).toBe('blue');
+  });
+
+  it('stops listening to the server once destroyed', () => {
+    configure(null);
+    connectAsHost();
+    const fixture = createFixture();
+    const ludoEngine = TestBed.inject(LudoEngineService);
+    const sync = vi.spyOn(ludoEngine, 'syncState');
+
+    fixture.destroy();
+    mockSocket.trigger('game:ludo:update', { gameState: { pieces: [], currentPlayer: 'blue', status: 'playing', phase: 'rolling', consecutiveSixes: 0, players: ['red', 'blue'] } });
+    expect(sync).not.toHaveBeenCalled();
   });
 
   it('toggles ready state via the checkbox, and shows the room code for the host', () => {

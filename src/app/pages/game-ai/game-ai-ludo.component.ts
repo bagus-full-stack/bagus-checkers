@@ -603,10 +603,16 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
     this.isAiThinking.set(true);
     this.aiTimeoutId = setTimeout(() => {
       const options = this.ludoEngine.movableOptions();
-      // ponytail: naive heuristic (prefer a capture, else the piece furthest along) - upgrade to lookahead if AI quality matters
+      const furthest = () => options.reduce((a, b) => (b.steps > a.steps ? b : a), options[0]);
+      const capture = options.find(o => o.capturedPieceIds.length > 0);
+      // easy: random; medium: capture, else furthest piece; hard: capture, else leave the base, else furthest
+      // shortcut: one-ply heuristics, no lookahead - upgrade if AI quality matters
       const best =
-        options.find(o => o.capturedPieceIds.length > 0) ??
-        options.reduce((a, b) => (b.steps > a.steps ? b : a), options[0]);
+        this.difficulty() === 'easy'
+          ? options[Math.floor(Math.random() * options.length)]
+          : capture ??
+            (this.difficulty() === 'hard' ? options.find(o => o.piece.trackIndex === undefined) : undefined) ??
+            furthest();
       if (best) {
         this.ludoEngine.moveTo(best.piece, best.destination);
       }
