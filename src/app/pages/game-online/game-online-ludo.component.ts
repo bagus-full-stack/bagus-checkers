@@ -100,7 +100,7 @@ function mapServerLudoState(raw: Omit<LudoGameState, 'result' | 'moveHistory'> &
              </div>
              @if (roomStatus() === 'playing') {
                <div style="display:flex; align-items:center; gap:1rem; margin-top:0.5rem;">
-                 <span style="font-weight:bold; color:var(--text-primary);">Lancer le dé => </span>
+                 <span class="roll-hint">Lancer le dé =&gt;</span>
                  <app-dice
                     [value]="diceRoll()"
                     [isRolling]="isRollingDice()"
@@ -643,6 +643,16 @@ function mapServerLudoState(raw: Omit<LudoGameState, 'result' | 'moveHistory'> &
         &:hover { background: #4338ca; }
       }
     }
+    /* Phones: free every pixel for the board so cells stay as large as possible */
+    @media (max-width: 480px) {
+      .game-header { padding: 0.5rem; gap: 0.5rem; flex-wrap: wrap; }
+      .game-title { font-size: 1rem; text-align: center; }
+      .action-btn { padding: 0.375rem 0.5rem; font-size: 0.75rem; white-space: nowrap; }
+      .game-main { padding: 0; gap: 0.5rem; }
+      .roll-hint { font-size: 0.8rem; }
+    }
+    .roll-hint { font-weight: bold; color: var(--text-primary); white-space: nowrap; }
+
   `,
 })
 export class GameOnlineLudoComponent implements OnInit, OnDestroy {

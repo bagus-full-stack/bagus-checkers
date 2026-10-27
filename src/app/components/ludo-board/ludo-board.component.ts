@@ -77,6 +77,14 @@ const LUDO_START_CELLS: Record<string, string> = {
       box-shadow: 0 8px 16px rgba(0,0,0,0.2);
     }
 
+    @media (max-width: 480px) {
+      .ludo-board-container {
+        max-width: 100vw;
+        padding: 0;
+        border-radius: 0;
+      }
+    }
+
     .ludo-grid {
       position: relative;
       display: grid;

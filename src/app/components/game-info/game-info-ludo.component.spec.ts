@@ -20,9 +20,9 @@ describe('GameInfoLudoComponent', () => {
     ludoEngine.startNewGame(['red', 'blue']);
     const fixture = setup();
 
-    const statusSpan = fixture.nativeElement.querySelector('.status-text span');
-    expect(statusSpan.textContent.trim()).toBe('Rouge');
-    expect(statusSpan.style.color).toBe('rgb(239, 68, 68)');
+    const el = fixture.nativeElement;
+    expect(el.querySelector('.player-name').textContent.trim()).toBe('Rouge');
+    expect(el.querySelector('.swatch').style.background).toContain('rgb(239, 68, 68)');
   });
 
   it.each([

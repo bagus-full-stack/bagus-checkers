@@ -37,13 +37,13 @@ import {
               class="color-btn"
               [class.active]="playerColor() === 'red'"
               (click)="setPlayerColor('red')"
-              aria-label="Jouer avec les rouges"
+              aria-label="Rouge : jouer avec les rouges"
             >Rouge</button>
             <button
               class="color-btn"
               [class.active]="playerColor() === 'blue'"
               (click)="setPlayerColor('blue')"
-              aria-label="Jouer avec les bleus"
+              aria-label="Bleu : jouer avec les bleus"
             >Bleu</button>
           </div>
           <select
@@ -71,7 +71,7 @@ import {
                     L'IA réfléchit...
                   </div>
                  }
-                 <span style="font-weight:bold; color:var(--text-primary);">Lancer le dé => </span>
+                 <span class="roll-hint">Lancer le dé =&gt;</span>
                  <app-dice
                     [value]="diceRoll()"
                     [isRolling]="isRolling()"
@@ -197,11 +197,11 @@ import {
     .selector-label {
       padding: 0 0.5rem;
       font-size: 0.75rem;
-      color: #9ca3af;
+      color: #d1d5db;
     }
 
     :host-context(.light-theme) .selector-label {
-      color: #6b7280;
+      color: #4b5563;
     }
 
     .color-btn {
@@ -209,7 +209,7 @@ import {
       background: transparent;
       border: none;
       border-radius: 0.375rem;
-      color: #9ca3af;
+      color: #d1d5db;
       font-size: 0.875rem;
       cursor: pointer;
       transition: all 0.15s ease;
@@ -226,7 +226,7 @@ import {
     }
 
     :host-context(.light-theme) .color-btn {
-      color: #6b7280;
+      color: #4b5563;
 
       &:hover {
         background: rgba(0, 0, 0, 0.05);
@@ -486,6 +486,16 @@ import {
         transform: translateY(0);
       }
     }
+    /* Phones: free every pixel for the board so cells stay as large as possible */
+    @media (max-width: 480px) {
+      .game-header { padding: 0.5rem; gap: 0.5rem; flex-wrap: wrap; }
+      .game-title { font-size: 1rem; text-align: center; }
+      .action-btn { padding: 0.375rem 0.5rem; font-size: 0.75rem; white-space: nowrap; }
+      .game-main { padding: 0; gap: 0.5rem; }
+      .roll-hint { font-size: 0.8rem; }
+    }
+    .roll-hint { font-weight: bold; color: var(--text-primary); white-space: nowrap; }
+
   `,
 })
 export class GameAiLudoComponent implements OnInit, OnDestroy {

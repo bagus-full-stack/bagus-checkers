@@ -9,7 +9,7 @@ import { I18nService } from '../../core/services';
   template: `
     <div class="home-container ludo-theme">
       <header class="hero">
-        <a routerLink="/" class="back-link" aria-label="Retour  l'accueil">
+        <a routerLink="/" class="back-link">
           ← Selection / Menu
         </a>
         <h1 class="title">Ludo</h1>

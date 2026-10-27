@@ -9,7 +9,7 @@ import { I18nService } from '../../core/services';
   template: `
     <div class="home-container">
       <header class="hero">
-        <a routerLink="/" class="back-link" aria-label="Retour  la slection">
+        <a routerLink="/" class="back-link" aria-label="Retour à la sélection">
           ← Selection / Menu
         </a>
         <h1 class="title">{{ i18n.t('home.title') }}</h1>

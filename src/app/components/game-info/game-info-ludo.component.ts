@@ -10,7 +10,9 @@ import { CommonModule } from '@angular/common';
     <div class="info-container">
       <div class="game-status" role="status" aria-live="polite">
         <span class="status-text">
-          Tour du joueur: <span [style.color]="getColorHex(currentPlayer())" style="text-transform: capitalize; font-weight: bold;">{{ getPlayerName(currentPlayer()) }}</span>
+          Tour du joueur :
+          <span class="swatch" [style.background]="getColorHex(currentPlayer())" aria-hidden="true"></span>
+          <strong class="player-name">{{ getPlayerName(currentPlayer()) }}</strong>
         </span>
       </div>
     </div>
@@ -35,6 +37,24 @@ import { CommonModule } from '@angular/common';
     .game-status {
       text-align: center;
       padding: 0.75rem;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 0.9em;
+      height: 0.9em;
+      margin: 0 0.25em 0 0.15em;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      vertical-align: -0.1em;
+    }
+
+    .player-name { text-transform: capitalize; }
+
+    @media (max-width: 480px) {
+      .info-container { padding: 0.5rem; }
+      .game-status { padding: 0.25rem; }
+      .status-text { font-size: 1rem; }
     }
 
     .status-text {

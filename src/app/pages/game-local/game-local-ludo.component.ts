@@ -25,7 +25,7 @@ import {
   template: `
     <div class="game-container ludo-theme">
       <header class="game-header">
-        <a routerLink="/" class="back-link" aria-label="Retour  l'accueil">
+        <a routerLink="/" class="back-link" aria-label="Retour à l'accueil">
           ← Accueil
         </a>
         <h1 class="game-title">Partie Locale (Ludo)</h1>
@@ -47,7 +47,7 @@ import {
             <div style="display:flex; justify-content:space-between; width:100%; align-items:center; padding: 0 1rem;">
              <app-game-info-ludo />
              <div style="display:flex; align-items:center; gap:1rem;">
-                <span style="font-weight:bold; color:var(--text-primary);">Lancer le dé => </span>
+                <span class="roll-hint">Lancer le dé =&gt;</span>
                 <app-dice
                   [value]="diceRoll()"
                   [isRolling]="isRolling()"
@@ -365,6 +365,16 @@ import {
         transform: translateY(0);
       }
     }
+    /* Phones: free every pixel for the board so cells stay as large as possible */
+    @media (max-width: 480px) {
+      .game-header { padding: 0.5rem; gap: 0.5rem; flex-wrap: wrap; }
+      .game-title { font-size: 1rem; text-align: center; }
+      .action-btn { padding: 0.375rem 0.5rem; font-size: 0.75rem; white-space: nowrap; }
+      .game-main { padding: 0; gap: 0.5rem; }
+      .roll-hint { font-size: 0.8rem; }
+    }
+    .roll-hint { font-weight: bold; color: var(--text-primary); white-space: nowrap; }
+
   `,
 })
 export class GameLocalLudoComponent implements OnInit {
