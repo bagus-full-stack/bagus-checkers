@@ -49,11 +49,15 @@ export class LudoEngineService {
   readonly board = computed(() => {
     const state = this._gameState();
     if (!state) return [];
+    // A cell shows one piece, so on a shared cell show the movable one: otherwise it is
+    // hidden and unclickable, the dice stays locked and the game soft-locks.
+    const movable = new Set(this.movableOptions().map(o => o.piece.id));
     const grid: (Piece | null)[][] = [];
     for (let row = 0; row < 15; row++) {
       grid[row] = [];
       for (let col = 0; col < 15; col++) {
-        grid[row][col] = state.pieces.find(p => p.position.row === row && p.position.col === col) ?? null;
+        const here = (p: Piece) => p.position.row === row && p.position.col === col;
+        grid[row][col] = state.pieces.find(p => here(p) && movable.has(p.id)) ?? state.pieces.find(here) ?? null;
       }
     }
     return grid;

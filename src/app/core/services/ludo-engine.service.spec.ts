@@ -50,6 +50,26 @@ describe('LudoEngineService', () => {
     expect(board[piece.position.row][piece.position.col]?.id).toBe(piece.id);
   });
 
+  it('board() shows the movable piece on a cell shared with a finished one', () => {
+    // steps 60 and 61 share the last home cell; the finished piece must not hide the movable one
+    const finished = onTrack('red-0', 'red', LUDO_TOTAL_STEPS);
+    const last = onTrack('red-1', 'red', LUDO_TOTAL_STEPS - 1);
+    service.syncState({
+      pieces: [finished, last],
+      currentPlayer: 'red',
+      status: 'playing',
+      moveHistory: [],
+      phase: 'rolling',
+      consecutiveSixes: 0,
+      players: ['red', 'green'],
+    });
+    mockRandomForRoll(1);
+    service.rollDice();
+
+    expect(service.phase()).toBe('moving');
+    expect(service.board()[last.position.row][last.position.col]?.id).toBe('red-1');
+  });
+
   describe('rollDice', () => {
     it('rolling a non-six with no legal moves passes the turn immediately', () => {
       const stuck = onTrack('red-0', 'red', LUDO_TOTAL_STEPS - 2);
