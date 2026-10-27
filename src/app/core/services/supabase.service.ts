@@ -325,44 +325,6 @@ export class SupabaseService {
     return data;
   }
 
-  /**
-   * Records a ranked game result. The rating delta is computed server-side
-   * (record_game_result Postgres function) from each player's stored rating -
-   * the client cannot set rating/wins/history to arbitrary values, it can only
-   * report who it played and who won.
-   */
-  async recordGameResult(
-    opponentId: string,
-    myColor: 'white' | 'black',
-    result: 'win' | 'loss' | 'draw',
-    variant: string,
-    totalMoves: number,
-    duration: number,
-    movesJson: string,
-    materialHistoryJson: string
-  ): Promise<{ newRating: number; ratingChange: number } | null> {
-    if (!this.supabase) return null;
-
-    const { data, error } = await this.supabase.rpc('record_game_result', {
-      p_opponent_id: opponentId,
-      p_my_color: myColor,
-      p_result: result,
-      p_variant: variant,
-      p_total_moves: totalMoves,
-      p_duration: duration,
-      p_moves_json: movesJson,
-      p_material_history_json: materialHistoryJson,
-    });
-
-    if (error) {
-      console.error('Error recording game result:', error);
-      return null;
-    }
-
-    const row = data?.[0];
-    return row ? { newRating: row.new_rating, ratingChange: row.rating_change } : null;
-  }
-
   // ==================== Leaderboard ====================
 
   /**

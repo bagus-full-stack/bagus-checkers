@@ -3,7 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseSync } from 'node:sqlite';
-import { GameRoom, OnlinePlayer, RoomStatus } from './types';
+import { GameRoom, OnlinePlayer, PlayerColor, RoomStatus } from './types';
+import { LudoGameState, removeLudoPlayer } from './ludo-rules';
 
 // ponytail: single-instance-only persistence (SQLite file on disk, reloaded
 // on boot) so a restart doesn't wipe active games. Not a fix for horizontal
@@ -18,6 +19,7 @@ export class RoomService implements OnModuleInit, OnModuleDestroy {
   private rooms = new Map<string, GameRoom>();
   private playerRooms = new Map<string, string>(); // playerId -> roomId
   private saveTimer: NodeJS.Timeout | null = null;
+  private sweepTimer: NodeJS.Timeout | null = null;
   private db!: DatabaseSync;
 
   onModuleInit(): void {
@@ -37,10 +39,39 @@ export class RoomService implements OnModuleInit, OnModuleDestroy {
     }[];
     this.playerRooms = new Map(playerRows.map((row) => [row.player_id, row.room_id]));
 
+    // Player ids are random per connection, so nobody can rejoin a restored room:
+    // mark everyone offline and let the sweep drop rooms that stay empty.
+    for (const room of this.rooms.values()) {
+      room.players?.forEach((p) => (p.isConnected = false));
+      room.hostPlayer.isConnected = false;
+      if (room.guestPlayer) room.guestPlayer.isConnected = false;
+    }
+    this.sweepTimer = setInterval(() => this.sweepAbandoned(), 60_000);
+    this.sweepTimer.unref();
+
     this.logger.log(`Restored ${this.rooms.size} room(s) from disk`);
   }
 
+  /** Drops rooms nobody is connected to that are older than `maxAgeMs`. */
+  sweepAbandoned(maxAgeMs = 10 * 60_000): void {
+    const now = Date.now();
+    let removed = false;
+    for (const [id, room] of this.rooms) {
+      const anyoneHere = room.players?.some((p) => p.isConnected) || room.hostPlayer.isConnected;
+      if (anyoneHere || now - room.createdAt < maxAgeMs) continue;
+      room.players?.forEach((p) => this.playerRooms.delete(p.id));
+      this.playerRooms.delete(room.hostPlayer.id);
+      this.rooms.delete(id);
+      removed = true;
+    }
+    if (removed) this.schedulePersist();
+  }
+
   onModuleDestroy(): void {
+    if (this.sweepTimer) {
+      clearInterval(this.sweepTimer);
+      this.sweepTimer = null;
+    }
     if (this.saveTimer) {
       clearTimeout(this.saveTimer);
       this.saveTimer = null;
@@ -123,10 +154,12 @@ export class RoomService implements OnModuleInit, OnModuleDestroy {
     const maxPlayers = room.variant === 'ludo' ? 4 : 2;
     if ((room.players?.length || 1) >= maxPlayers) return null; // Room is full
     if (room.status !== 'waiting') return null;
+    if (room.hostPlayer.id === player.id || room.players?.some((p) => p.id === player.id)) return null;
 
     if (room.variant === 'ludo') {
       const colors = ['red', 'green', 'yellow', 'blue'];
-      const assignedColor = colors[room.players?.length || 1];
+      const taken = new Set(room.players?.map((p) => p.color));
+      const assignedColor = colors.find((c) => !taken.has(c as any));
       const newPlayer = { ...player, color: assignedColor as any, isReady: false };
 
       if (!room.players) room.players = [room.hostPlayer];
@@ -157,6 +190,9 @@ export class RoomService implements OnModuleInit, OnModuleDestroy {
     this.playerRooms.delete(playerId);
 
     const wasHost = room.hostPlayer.id === playerId;
+    const ludoLeaverColor = room.variant === 'ludo' && room.status === 'playing'
+      ? room.players?.find((p) => p.id === playerId)?.color
+      : undefined;
 
     if (wasHost) {
       if (room.variant === 'ludo') {
@@ -194,8 +230,26 @@ export class RoomService implements OnModuleInit, OnModuleDestroy {
       room.status = 'waiting';
     }
 
+    // Mid-game Ludo leave: the match goes on without them instead of freezing or aborting.
+    if (ludoLeaverColor && this.rooms.has(roomId)) {
+      room.status = 'playing';
+      this.dropLudoPlayer(roomId, ludoLeaverColor);
+    }
+
     this.schedulePersist();
     return { room, wasHost };
+  }
+
+  /** Removes `color` from a running Ludo game; the room ends when one player is left. */
+  dropLudoPlayer(roomId: string, color: PlayerColor): LudoGameState | null {
+    const room = this.rooms.get(roomId);
+    if (!room || room.status !== 'playing') return null;
+
+    const next = removeLudoPlayer(room.gameState as LudoGameState, color);
+    room.gameState = next;
+    if (next.status === 'finished') this.endGame(roomId);
+    else this.schedulePersist();
+    return next;
   }
 
   getRoom(roomId: string): GameRoom | null {

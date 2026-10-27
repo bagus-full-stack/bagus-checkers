@@ -14,6 +14,7 @@ interface GameState {
   currentPlayer: PlayerColor;
   status: 'playing' | 'finished';
   winner?: PlayerColor;
+  reason?: 'no-pieces' | 'no-moves';
 
   // Ludo specific
   phase?: 'rolling' | 'moving';
@@ -147,20 +148,18 @@ export class GameService {
 
     // Check for game over
     const nextPlayerPieces = newPieces.filter((p) => p.color === nextPlayer);
-    const isGameOver = nextPlayerPieces.length === 0;
+    const rules = getCheckersVariant(variant);
+    const hasMoves = nextPlayerPieces.some(
+      (p) => getValidMovesForPiece(p, { pieces: newPieces }, rules).length > 0
+    );
+    const isGameOver = !hasMoves;
 
     return {
       pieces: newPieces,
       currentPlayer: nextPlayer,
       status: isGameOver ? 'finished' : 'playing',
       winner: isGameOver ? playerColor : undefined,
+      reason: isGameOver ? (nextPlayerPieces.length === 0 ? 'no-pieces' : 'no-moves') : undefined,
     };
-  }
-
-  /**
-   * Validates if it's a player's turn
-   */
-  isPlayerTurn(state: GameState, playerColor: PlayerColor): boolean {
-    return state.currentPlayer === playerColor;
   }
 }

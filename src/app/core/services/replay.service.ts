@@ -97,9 +97,7 @@ export class ReplayService {
       materialHistory,
     };
 
-    // Ranked games are recorded server-side via SupabaseService.recordGameResult
-    // (see ranking.service.ts) so rating/history can't be forged from the client.
-    // This replay export is always local.
+    // This replay export is always local; ranked results are never written from the client.
     this.storeGame(game);
     return id;
   }

@@ -167,6 +167,29 @@ function advanceTurn(state: LudoGameState, lastRoll: number): LudoGameState {
   return { ...state, currentPlayer: nextPlayer, phase: 'rolling', consecutiveSixes: 0, lastDiceRoll: undefined };
 }
 
+/** Drops a leaver's tokens, hands over the turn if it was theirs, and ends the game when one player remains. */
+export function removeLudoPlayer(state: LudoGameState, color: PlayerColor): LudoGameState {
+  if (state.status !== 'playing' || !state.players.includes(color)) return state;
+
+  const index = state.players.indexOf(color);
+  const players = state.players.filter((c) => c !== color);
+  const pieces = state.pieces.filter((p) => p.color !== color);
+
+  if (players.length <= 1) {
+    return { ...state, players, pieces, status: 'finished', winner: players[0], phase: 'rolling' };
+  }
+  if (state.currentPlayer !== color) return { ...state, players, pieces };
+  return {
+    ...state,
+    players,
+    pieces,
+    currentPlayer: players[index % players.length],
+    phase: 'rolling',
+    consecutiveSixes: 0,
+    lastDiceRoll: undefined,
+  };
+}
+
 /** Server rolls the die itself - the client never sends a roll value. */
 export function rollLudoDice(state: LudoGameState): { roll: number; state: LudoGameState } {
   const roll = Math.floor(Math.random() * 6) + 1;

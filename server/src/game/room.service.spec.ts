@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { RoomService } from './room.service';
 import { OnlinePlayer } from './types';
+import { createLudoState, LudoGameState } from './ludo-rules';
 
 function assert(condition: boolean, message: string): void {
   if (!condition) throw new Error(message);
@@ -31,6 +32,31 @@ function main(): void {
   assert(restoredRoom!.guestPlayer?.id === 'p2', 'guest player should be restored');
   assert(restored.getRoomByPlayerId('p1')?.id === room.id, 'playerRooms index should be restored');
   restored.onModuleDestroy();
+
+  // Ludo: a freed middle color is reused, never duplicated.
+  const ludoService = new RoomService();
+  ludoService.onModuleInit();
+  const ludo = ludoService.createRoom(player('l1', 'A'), 'Ludo', false, 'ludo');
+  ludoService.joinRoom(ludo.id, player('l2', 'B'));
+  ludoService.joinRoom(ludo.id, player('l3', 'C'));
+  ludoService.leaveRoom('l2');
+  ludoService.joinRoom(ludo.id, player('l4', 'D'));
+  const colors = ludoService.getRoom(ludo.id)!.players!.map((p) => p.color);
+  assert(new Set(colors).size === colors.length, 'ludo colors should stay unique after a leave');
+
+  // Ludo: leaving mid-game passes the turn / ends the game instead of freezing it.
+  const live = ludoService.createRoom(player('m1', 'A'), 'Live', false, 'ludo');
+  ludoService.joinRoom(live.id, player('m2', 'B'));
+  ludoService.setPlayerReady('m1', true);
+  ludoService.setPlayerReady('m2', true);
+  ludoService.startGame(live.id);
+  ludoService.updateGameState(live.id, createLudoState(['red', 'green']));
+  ludoService.leaveRoom('m1');
+  const after = ludoService.getRoom(live.id)!;
+  const afterState = after.gameState as LudoGameState;
+  assert(afterState.status === 'finished' && afterState.winner === 'green', 'last remaining ludo player should win');
+  assert(after.status === 'finished', 'room should end when one ludo player remains');
+  ludoService.onModuleDestroy();
 
   fs.rmSync(storePath, { force: true });
   console.log('room.service persistence: all assertions passed');

@@ -12,9 +12,10 @@ import { Server, Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomService } from './room.service';
 import { GameService } from './game.service';
-import { OnlinePlayer, ChatMessage } from './types';
+import { OnlinePlayer, ChatMessage, GameRoom } from './types';
 import { getAllowedOrigins } from '../cors';
 import { WsThrottlerGuard } from './ws-throttler.guard';
+import { LudoGameState } from './ludo-rules';
 import {
   RoomCreateDto,
   RoomJoinDto,
@@ -48,8 +49,45 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private gameService: GameService
   ) {}
 
+  /** The room `playerId` is in, but only if it is `roomId` - client-supplied ids are never trusted. */
+  private roomOf(playerId: string, roomId: string): GameRoom | null {
+    const room = this.roomService.getRoomByPlayerId(playerId);
+    return room && room.id === roomId ? room : null;
+  }
+
+  /** Takes a player out of their room (leave, disconnect, switching rooms) and tells everyone left. */
+  private removeFromRoom(playerId: string, client?: Socket): void {
+    const before = this.roomService.getRoomByPlayerId(playerId);
+    if (!before) return;
+    const leaverColor = before.players?.find((p) => p.id === playerId)?.color;
+    const checkersGameAborted = before.variant !== 'ludo' && before.status === 'playing';
+
+    const result = this.roomService.leaveRoom(playerId);
+    if (!result) return;
+    client?.leave(before.id);
+
+    const { room } = result;
+    this.server.to(room.id).emit('room:left', { room, playerId });
+
+    if (room.variant === 'ludo' && (room.status === 'playing' || room.status === 'finished') && room.gameState) {
+      const state = room.gameState as LudoGameState;
+      this.server.to(room.id).emit('game:ludo:update', { gameState: state });
+      if (state.status === 'finished') {
+        this.server.to(room.id).emit('game:ended', { result: { winner: state.winner, reason: 'resignation' } });
+      }
+    } else if (checkersGameAborted) {
+      this.server.to(room.id).emit('game:ended', {
+        result: { winner: leaverColor === 'white' ? 'black' : 'white', reason: 'resignation' },
+      });
+    }
+  }
+
   handleConnection(client: Socket) {
-    const playerName = client.handshake.auth['playerName'] || `Player${client.id.slice(0, 4)}`;
+    const rawName = client.handshake.auth['playerName'];
+    const playerName =
+      typeof rawName === 'string' && rawName.trim()
+        ? rawName.trim().slice(0, 24)
+        : `Player${client.id.slice(0, 4)}`;
     const playerId = uuidv4();
 
     const player: OnlinePlayer = {
@@ -83,6 +121,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server.to(room.id).emit('player:disconnected', { playerId: player.id });
     }
 
+    // Ids are per-connection, so a dropped player can never come back: treat it as a leave.
+    this.removeFromRoom(player.id);
+
     this.players.delete(client.id);
     this.socketToPlayer.delete(client.id);
 
@@ -100,6 +141,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    this.removeFromRoom(player.id, client);
     const room = this.roomService.createRoom(
       player,
       data.name,
@@ -125,6 +167,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    const current = this.roomService.getRoomByPlayerId(player.id);
+    if (current && current.id !== data.roomId && this.roomService.getRoom(data.roomId)) {
+      this.removeFromRoom(player.id, client);
+    }
     const room = this.roomService.joinRoom(data.roomId, player);
     if (!room) {
       client.emit('error', { code: 'ROOM_ERROR', message: 'Cannot join room' });
@@ -148,14 +194,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const player = this.players.get(client.id);
     if (!player) return;
 
-    const result = this.roomService.leaveRoom(player.id);
-    if (!result) return;
+    if (!this.roomOf(player.id, data.roomId)) return;
 
-    client.leave(data.roomId);
-    this.server.to(data.roomId).emit('room:left', {
-      room: result.room,
-      playerId: player.id,
-    });
+    this.removeFromRoom(player.id, client);
 
     this.logger.log(`${player.name} left room ${data.roomId}`);
   }
@@ -177,12 +218,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const room = this.roomService.setPlayerReady(player.id, data.isReady);
     if (!room) return;
 
-    this.server.to(data.roomId).emit('player:ready', {
+    this.server.to(room.id).emit('player:ready', {
       playerId: player.id,
       isReady: data.isReady,
     });
 
-    this.server.to(data.roomId).emit('room:updated', { room });
+    this.server.to(room.id).emit('room:updated', { room });
 
     // Start game if both ready
     if (room.status === 'ready') {
@@ -252,7 +293,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server.to(room.id).emit('game:ended', {
         result: {
           winner: newState.winner,
-          reason: 'no-pieces',
+          reason: newState.reason ?? 'no-pieces',
         },
       });
 
@@ -328,22 +369,25 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const player = this.players.get(client.id);
     if (!player) return;
 
-    const room = this.roomService.getRoom(data.roomId);
+    const room = this.roomOf(player.id, data.roomId);
     if (!room || room.status !== 'playing') return;
 
-    const winner =
-      room.hostPlayer.id === player.id
-        ? room.guestPlayer?.color
-        : room.hostPlayer.color;
-
-    this.roomService.endGame(room.id);
-
-    this.server.to(room.id).emit('game:ended', {
-      result: {
-        winner,
-        reason: 'resignation',
-      },
-    });
+    if (room.variant === 'ludo') {
+      const color = room.players?.find((p) => p.id === player.id)?.color;
+      const state = color && this.roomService.dropLudoPlayer(room.id, color);
+      if (state) {
+        this.server.to(room.id).emit('game:ludo:update', { gameState: state });
+        if (state.status === 'finished') {
+          this.server.to(room.id).emit('game:ended', { result: { winner: state.winner, reason: 'resignation' } });
+        }
+      }
+    } else {
+      const myColor = room.hostPlayer.id === player.id ? room.hostPlayer.color : room.guestPlayer?.color;
+      this.roomService.endGame(room.id);
+      this.server.to(room.id).emit('game:ended', {
+        result: { winner: myColor === 'white' ? 'black' : 'white', reason: 'resignation' },
+      });
+    }
 
     this.logger.log(`${player.name} resigned in room ${room.id}`);
   }
@@ -354,7 +398,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: ChatSendDto
   ) {
     const player = this.players.get(client.id);
-    if (!player || !data.message.trim()) return;
+    if (!player || !data.message.trim() || !this.roomOf(player.id, data.roomId)) return;
 
     const chatMessage: ChatMessage = {
       id: uuidv4(),

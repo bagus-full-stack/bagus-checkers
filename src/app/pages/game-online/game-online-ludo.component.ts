@@ -745,8 +745,7 @@ export class GameOnlineLudoComponent implements OnInit, OnDestroy {
   }
 
   isWinner(): boolean {
-    // Needs proper implementation in Ludo Engine
-    return false;
+    return this.gameResult()?.winner === this.myColor();
   }
 
   onPieceClicked(piece: Piece): void {
