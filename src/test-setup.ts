@@ -24,3 +24,16 @@ if (typeof window !== 'undefined' && window.HTMLMediaElement) {
   window.HTMLMediaElement.prototype.play = () => Promise.resolve();
   window.HTMLMediaElement.prototype.pause = () => {};
 }
+
+// Specs share one jsdom window; storage left behind by one spec (profiles,
+// preferences, saved games) must not leak into the next.
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
+
+// I18nService falls back to navigator.language; specs assume the French default,
+// which otherwise only holds on a machine whose browser locale is not English.
+if (typeof navigator !== 'undefined') {
+  Object.defineProperty(navigator, 'language', { value: 'fr-FR', configurable: true });
+}
