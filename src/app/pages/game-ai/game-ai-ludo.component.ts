@@ -71,7 +71,7 @@ import {
                     L'IA réfléchit...
                   </div>
                  }
-                 <span style="font-weight:bold; color:white;">Lancer le dé => </span>
+                 <span style="font-weight:bold; color:var(--text-primary);">Lancer le dé => </span>
                  <app-dice
                     [value]="diceRoll()"
                     [isRolling]="isRolling()"

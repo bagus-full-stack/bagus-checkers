@@ -91,9 +91,20 @@ describe('LudoBoardComponent', () => {
       [3, 7, 'home-green'],
       [7, 11, 'home-yellow'],
       [11, 7, 'home-blue'],
-      [7, 7, 'center-cross'],
-      [6, 7, 'center-cross'],
-      [0, 7, 'track'], // shared track cell above the board, not part of any zone above
+      [7, 7, 'center'],
+      [6, 7, 'center'],
+      [6, 6, 'center'], // inner corner: home, not track (standard 52-cell circuit)
+      [1, 1, 'base-red nest'],
+      [2, 2, 'base-red nest nest-spot'],
+      [12, 12, 'base-yellow nest nest-spot'],
+      [7, 0, 'track arrow arrow-red'],
+      [14, 7, 'track arrow arrow-blue'],
+      [6, 0, 'track start-red safe'],
+      [0, 8, 'track start-green safe'],
+      [8, 14, 'track start-yellow safe'],
+      [14, 6, 'track start-blue safe'],
+      [0, 7, 'track arrow arrow-green'], // shared track cell above the board, just before green's home column
+      [0, 6, 'track'],
     ])('classifies (%i,%i) as %s', (row, col, expected) => {
       const fixture = setup();
       expect(fixture.componentInstance.getCellClasses(row, col)).toBe(expected);

@@ -8,6 +8,7 @@ import { Component, ChangeDetectionStrategy, input, output } from '@angular/core
       class="dice btn"
       [class.rolling]="isRolling()"
       [disabled]="disabled() || isRolling()"
+      [attr.aria-label]="value() ? 'Dé : ' + value() : 'Lancer le dé'"
       (click)="roll.emit()"
     >
       <div class="dice-face" [attr.data-value]="value()">
@@ -28,8 +29,17 @@ import { Component, ChangeDetectionStrategy, input, output } from '@angular/core
         }
       </div>
     </button>
+    <span class="sr-only" role="status">{{ value() ? 'Dé : ' + value() : '' }}</span>
   `,
   styles: [`
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
     .dice {
       width: 60px;
       height: 60px;

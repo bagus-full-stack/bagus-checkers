@@ -16,7 +16,7 @@ describe('TutorialLudoComponent', () => {
 
   it('renders one section per nav link', () => {
     const fixture = setup();
-    const sectionIds = ['basics', 'movement', 'capture', 'promotion', 'winning'];
+    const sectionIds = ['basics', 'movement', 'capture', 'finish', 'winning'];
     for (const id of sectionIds) {
       expect(fixture.nativeElement.querySelector(`#${id}`)).not.toBeNull();
     }
@@ -34,10 +34,17 @@ describe('TutorialLudoComponent', () => {
     );
   });
 
+  it('shows the Ludo rules, not the checkers rules', () => {
+    const text: string = setup().nativeElement.textContent;
+    expect(text).toContain('Règles du Ludo');
+    expect(text).toContain('52 cases');
+    expect(text).not.toContain('Dames');
+  });
+
   it('links the CTA buttons to the local and AI game routes', () => {
     const fixture = setup();
     const links = fixture.nativeElement.querySelectorAll('.cta-btn');
-    expect(links[0].getAttribute('href')).toBe('/game/local');
-    expect(links[1].getAttribute('href')).toBe('/game/ai');
+    expect(links[0].getAttribute('href')).toBe('/game/local?variant=ludo');
+    expect(links[1].getAttribute('href')).toBe('/game/ai?variant=ludo');
   });
 });

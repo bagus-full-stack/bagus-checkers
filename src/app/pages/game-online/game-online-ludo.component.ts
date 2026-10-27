@@ -100,7 +100,7 @@ function mapServerLudoState(raw: Omit<LudoGameState, 'result' | 'moveHistory'> &
              </div>
              @if (roomStatus() === 'playing') {
                <div style="display:flex; align-items:center; gap:1rem; margin-top:0.5rem;">
-                 <span style="font-weight:bold; color:white;">Lancer le dé => </span>
+                 <span style="font-weight:bold; color:var(--text-primary);">Lancer le dé => </span>
                  <app-dice
                     [value]="diceRoll()"
                     [isRolling]="isRollingDice()"

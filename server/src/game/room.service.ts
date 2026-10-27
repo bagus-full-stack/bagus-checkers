@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseSync } from 'node:sqlite';
 import { GameRoom, OnlinePlayer, PlayerColor, RoomStatus } from './types';
-import { LudoGameState, removeLudoPlayer } from './ludo-rules';
+import { isLudoStateConsistent, LudoGameState, removeLudoPlayer } from './ludo-rules';
 
 // ponytail: single-instance-only persistence (SQLite file on disk, reloaded
 // on boot) so a restart doesn't wipe active games. Not a fix for horizontal
@@ -45,6 +45,15 @@ export class RoomService implements OnModuleInit, OnModuleDestroy {
       room.players?.forEach((p) => (p.isConnected = false));
       room.hostPlayer.isConnected = false;
       if (room.guestPlayer) room.guestPlayer.isConnected = false;
+    }
+    // A Ludo game saved under another track layout cannot be resumed: drop it.
+    for (const [id, room] of this.rooms) {
+      if (room.variant !== 'ludo' || !room.gameState || isLudoStateConsistent(room.gameState as LudoGameState)) continue;
+      room.players?.forEach((p) => this.playerRooms.delete(p.id));
+      this.playerRooms.delete(room.hostPlayer.id);
+      this.rooms.delete(id);
+      this.logger.warn(`Dropped room ${id}: saved Ludo state does not match the current board`);
+      this.schedulePersist();
     }
     this.sweepTimer = setInterval(() => this.sweepAbandoned(), 60_000);
     this.sweepTimer.unref();

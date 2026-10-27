@@ -39,7 +39,6 @@ const rotate90 = (p: Position): Position => ({ row: p.col, col: 14 - p.row });
 const RED_QUADRANT: Position[] = [
   { row: 6, col: 0 }, { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 },
   { row: 6, col: 4 }, { row: 6, col: 5 },
-  { row: 6, col: 6 },
   { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 },
   { row: 1, col: 6 }, { row: 0, col: 6 },
   { row: 0, col: 7 },
@@ -53,7 +52,7 @@ function buildQuadrants(): Record<PlayerColor, Position[]> {
 }
 
 const QUADRANTS = buildQuadrants();
-const LUDO_TRACK_LENGTH = RED_QUADRANT.length * 4; // 56
+const LUDO_TRACK_LENGTH = RED_QUADRANT.length * 4; // 52
 const LUDO_PATH: Position[] = [...QUADRANTS.red, ...QUADRANTS.green, ...QUADRANTS.yellow, ...QUADRANTS.blue];
 
 const LUDO_START_INDEX: Record<PlayerColor, number> = {
@@ -76,8 +75,8 @@ const LUDO_HOME_PATH: Record<PlayerColor, Position[]> = {
   black: [],
 };
 
-const LUDO_HOME_ENTRY_STEP = LUDO_TRACK_LENGTH; // 56
-const LUDO_TOTAL_STEPS = LUDO_HOME_ENTRY_STEP + LUDO_HOME_LENGTH; // 61
+const LUDO_HOME_ENTRY_STEP = LUDO_TRACK_LENGTH; // 52
+const LUDO_TOTAL_STEPS = LUDO_HOME_ENTRY_STEP + LUDO_HOME_LENGTH; // 57
 const LUDO_SAFE_INDICES: ReadonlySet<number> = new Set(Object.values(LUDO_START_INDEX));
 
 function ludoPositionForSteps(color: PlayerColor, steps: number): Position {
@@ -91,6 +90,14 @@ function ludoPositionForSteps(color: PlayerColor, steps: number): Position {
 
 function positionsEqual(a: Position, b: Position): boolean {
   return a.row === b.row && a.col === b.col;
+}
+
+/** False when a saved state was built on another track geometry (a piece is not where its step count says). */
+export function isLudoStateConsistent(state: LudoGameState): boolean {
+  return state.pieces.every((p) => {
+    if (p.trackIndex === undefined) return true;
+    return p.trackIndex >= 0 && p.trackIndex <= LUDO_TOTAL_STEPS && positionsEqual(p.position, ludoPositionForSteps(p.color, p.trackIndex));
+  });
 }
 
 export function createLudoState(players: PlayerColor[]): LudoGameState {

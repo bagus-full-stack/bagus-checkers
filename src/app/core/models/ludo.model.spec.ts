@@ -16,13 +16,18 @@ describe('ludo path geometry', () => {
     expect(seen.size).toBe(LUDO_PATH.length);
   });
 
-  it('is a single closed loop - every consecutive cell (including the wrap) is orthogonally adjacent', () => {
+  it('is a single closed loop of 52 cells - every step is adjacent, diagonal only around the 4 center corners', () => {
+    expect(LUDO_PATH).toHaveLength(52);
+    let diagonals = 0;
     for (let i = 0; i < LUDO_PATH.length; i++) {
       const a = LUDO_PATH[i];
       const b = LUDO_PATH[(i + 1) % LUDO_PATH.length];
-      const dist = Math.abs(a.row - b.row) + Math.abs(a.col - b.col);
-      expect(dist).toBe(1);
+      const dr = Math.abs(a.row - b.row);
+      const dc = Math.abs(a.col - b.col);
+      expect(Math.max(dr, dc)).toBe(1);
+      if (dr + dc === 2) diagonals++;
     }
+    expect(diagonals).toBe(4);
   });
 
   it('lands each color at the cell adjacent to its own home entrance after LUDO_HOME_ENTRY_STEP steps', () => {

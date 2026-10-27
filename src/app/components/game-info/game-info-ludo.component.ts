@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     <div class="info-container">
-      <div class="game-status">
+      <div class="game-status" role="status" aria-live="polite">
         <span class="status-text">
           Tour du joueur: <span [style.color]="getColorHex(currentPlayer())" style="text-transform: capitalize; font-weight: bold;">{{ getPlayerName(currentPlayer()) }}</span>
         </span>

@@ -9,12 +9,28 @@ import { CommonModule } from '@angular/common';
 import { Position, Piece, Move } from '../../core/models';
 import { PieceComponent } from '../piece/piece.component';
 
+/** Entry square of each color (the only safe squares), keyed "row,col". */
+/** Last track cell before each color's home column, with the arrow shown there. */
+const LUDO_ARROW_CELLS: Record<string, string> = {
+  '7,0': 'red',
+  '0,7': 'green',
+  '7,14': 'yellow',
+  '14,7': 'blue',
+};
+
+const LUDO_START_CELLS: Record<string, string> = {
+  '6,0': 'red',
+  '0,8': 'green',
+  '8,14': 'yellow',
+  '14,6': 'blue',
+};
+
 @Component({
   selector: 'app-ludo-board',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, PieceComponent],
   template: `
-    <div class="ludo-board-container">
+    <div class="ludo-board-container" role="group" aria-label="Plateau de Ludo">
       <div class="ludo-grid">
         @for (row of [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]; track row) {
           @for (col of [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]; track col) {
@@ -39,6 +55,7 @@ import { PieceComponent } from '../piece/piece.component';
             </div>
           }
         }
+        <div class="ludo-center" aria-hidden="true"></div>
       </div>
     </div>
   `,
@@ -61,6 +78,7 @@ import { PieceComponent } from '../piece/piece.component';
     }
 
     .ludo-grid {
+      position: relative;
       display: grid;
       width: 100%;
       height: 100%;
@@ -120,8 +138,52 @@ import { PieceComponent } from '../piece/piece.component';
     .home-yellow { background: #eab308; }
     .home-blue { background: #3b82f6; }
 
-    /* Center */
-    .center-cross { background: #333; }
+    /* Start squares: the only safe squares, drawn in the owner's color with a star */
+    .ludo-cell.start-red { background: #ef4444; }
+    .ludo-cell.start-green { background: #22c55e; }
+    .ludo-cell.start-yellow { background: #eab308; }
+    .ludo-cell.start-blue { background: #3b82f6; }
+    .safe::after {
+      content: '★';
+      position: absolute;
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+      font-size: clamp(10px, 2.4vw, 22px);
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    /* Center: the 3x3 block is home, drawn as four triangles (one per color) by an overlay */
+    .ludo-cell.center { background: transparent; }
+    .ludo-center {
+      position: absolute;
+      left: 40%;
+      top: 40%;
+      width: 20%;
+      height: 20%;
+      background: conic-gradient(from -45deg, #22c55e 0 90deg, #eab308 90deg 180deg, #3b82f6 180deg 270deg, #ef4444 270deg 360deg);
+      pointer-events: none;
+    }
+
+    /* Yard nests: a white square with four colored spots, as on a real board */
+    .base-red { --c: #ef4444; }
+    .base-green { --c: #22c55e; }
+    .base-yellow { --c: #eab308; }
+    .base-blue { --c: #3b82f6; }
+    .ludo-cell.nest { background: #fff; }
+    .ludo-cell.nest-spot { background: radial-gradient(circle closest-side, var(--c) 0 98%, #fff 100%); }
+
+    /* Arrow on the cell just before each home column, in that color */
+    .arrow::after {
+      position: absolute;
+      font-size: clamp(10px, 2.2vw, 20px);
+      line-height: 1;
+      pointer-events: none;
+    }
+    .arrow-red::after { content: '▶'; color: #ef4444; }
+    .arrow-green::after { content: '▼'; color: #22c55e; }
+    .arrow-yellow::after { content: '◀'; color: #eab308; }
+    .arrow-blue::after { content: '▲'; color: #3b82f6; }
   `
 })
 export class LudoBoardComponent {
@@ -158,14 +220,15 @@ export class LudoBoardComponent {
   getCellClasses(row: number, col: number): string {
     const classes = [];
 
-    // Top-left: RED
-    if (row < 6 && col < 6) classes.push('base-red');
-    // Top-right: GREEN
-    else if (row < 6 && col > 8) classes.push('base-green');
-    // Bottom-left: BLUE
-    else if (row > 8 && col < 6) classes.push('base-blue');
-    // Bottom-right: YELLOW
-    else if (row > 8 && col > 8) classes.push('base-yellow');
+    // Yards: RED top-left, GREEN top-right, BLUE bottom-left, YELLOW bottom-right.
+    // The inner 4x4 is the white nest; its 2x2 core holds the four spots.
+    const yard = row < 6 ? (col < 6 ? 'red' : col > 8 ? 'green' : null) : row > 8 ? (col < 6 ? 'blue' : col > 8 ? 'yellow' : null) : null;
+    if (yard) {
+      classes.push(`base-${yard}`);
+      const r = row % 9, c = col % 9; // 0..5 inside a yard
+      if (r >= 1 && r <= 4 && c >= 1 && c <= 4) classes.push('nest');
+      if (r >= 2 && r <= 3 && c >= 2 && c <= 3) classes.push('nest-spot');
+    }
 
     // Home columns/rows - each color's private run-in to the center, adjacent to
     // the shared-track branch cell a token reaches after (almost) a full lap.
@@ -174,13 +237,16 @@ export class LudoBoardComponent {
     else if (row === 7 && col > 8 && col < 14) classes.push('home-yellow'); // Yellow home path (right)
     else if (col === 7 && row > 8 && row < 14) classes.push('home-blue'); // Blue home path (bottom)
 
-    // True center (the small plus-shape the 4 home paths feed into). The 4 cells at
-    // the inner corners of this block ((6,6),(6,8),(8,6),(8,8)) are shared track, not
-    // center - they're what connects the horizontal and vertical arms into one loop.
-    else if ((row === 7 && col === 7) || (row === 6 && col === 7) || (row === 8 && col === 7) || (row === 7 && col === 6) || (row === 7 && col === 8)) classes.push('center-cross');
+    // Center 3x3: home, painted as four triangles by the .ludo-center overlay. Not track.
+    else if (row >= 6 && row <= 8 && col >= 6 && col <= 8) classes.push('center');
 
-    else classes.push('track');
-
+    else {
+      classes.push('track');
+      const start = LUDO_START_CELLS[`${row},${col}`];
+      if (start) classes.push(`start-${start}`, 'safe');
+      const arrow = LUDO_ARROW_CELLS[`${row},${col}`];
+      if (arrow) classes.push('arrow', `arrow-${arrow}`);
+    }
     return classes.join(' ');
   }
 }

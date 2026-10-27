@@ -13,14 +13,17 @@ import { Piece } from '../../core/models';
   host: {
     '[class]': 'hostClasses()',
     '[attr.aria-label]': 'ariaLabel()',
-    'role': 'img',
+    '[attr.role]': 'isInteractiveToken() ? "button" : "img"',
+    '[attr.tabindex]': 'isInteractiveToken() ? 0 : null',
+    '(keydown.enter)': 'activate($event)',
+    '(keydown.space)': 'activate($event)',
   },
   template: `
     @if (piece().type === 'king') {
       <span class="crown" aria-hidden="true">♔</span>
     }
     @if (piece().type === 'token') {
-      <span class="token-inner" aria-hidden="true"></span>
+      <span class="token-inner" aria-hidden="true">{{ tokenMark() }}</span>
     }
   `,
   styles: `
@@ -124,9 +127,14 @@ import { Piece } from '../../core/models';
     }
 
     .token-inner {
-      display: block;
-      width: 40%;
-      height: 40%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 56%;
+      height: 56%;
+      font-size: clamp(8px, 1.7vw, 16px);
+      line-height: 1;
+      color: rgba(0, 0, 0, 0.7);
       border-radius: 50%;
       background: rgba(255,255,255, 0.5);
       position: absolute;
@@ -164,6 +172,13 @@ export class PieceComponent {
     return classes.join(' ');
   });
 
+  private static readonly TOKEN_MARKS: Partial<Record<Piece['color'], string>> = {
+    red: '▲',
+    green: '■',
+    yellow: '◆',
+    blue: '●',
+  };
+
   private static readonly COLOR_LABELS: Record<Piece['color'], string> = {
     white: 'blanc',
     black: 'noir',
@@ -176,6 +191,20 @@ export class PieceComponent {
   protected readonly ariaLabel = computed(() => {
     const piece = this.piece();
     const type = piece.type === 'king' ? 'Dame' : 'Pion';
-    return `${type} ${PieceComponent.COLOR_LABELS[piece.color]}`;
+    const base = `${type} ${PieceComponent.COLOR_LABELS[piece.color]}`;
+    return this.isInteractiveToken() ? `${base}, jouable` : base;
   });
+
+  /** Ludo tokens can be played: expose them as buttons reachable by keyboard. */
+  protected readonly isInteractiveToken = computed(() => this.piece().type === 'token' && this.isMovable());
+
+  /** A shape per color, so colors never rely on hue alone (WCAG 1.4.1). */
+  protected readonly tokenMark = computed(() => PieceComponent.TOKEN_MARKS[this.piece().color] ?? '');
+
+  /** Enter/Space on a focused token acts like a click (it bubbles to the board cell). */
+  protected activate(event: Event): void {
+    if (!this.isInteractiveToken()) return;
+    event.preventDefault();
+    (event.target as HTMLElement).click();
+  }
 }

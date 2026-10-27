@@ -54,9 +54,7 @@ test.describe('Ludo menu', () => {
     }
   });
 
-  // Known bug: tutorial-ludo.component.ts holds the checkers tutorial text.
   test('tutorial shows Ludo rules, not checkers rules', async ({ page }) => {
-    test.fail();
     await page.goto('/tutorial?variant=ludo');
     await expect(page.locator('body')).not.toContainText('Règles du Jeu de Dames');
   });

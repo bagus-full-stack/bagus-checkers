@@ -58,6 +58,24 @@ function main(): void {
   assert(after.status === 'finished', 'room should end when one ludo player remains');
   ludoService.onModuleDestroy();
 
+  // Restart: a Ludo game saved on an older track layout is dropped, a consistent one is kept.
+  const saver = new RoomService();
+  saver.onModuleInit();
+  const keep = saver.createRoom(player('k1', 'A'), 'Keep', false, 'ludo');
+  const stale = saver.createRoom(player('s1', 'A'), 'Stale', false, 'ludo');
+  const fresh = createLudoState(['red', 'green']);
+  saver.updateGameState(keep.id, fresh);
+  saver.updateGameState(stale.id, {
+    ...fresh,
+    pieces: fresh.pieces.map((p, i) => (i === 0 ? { ...p, trackIndex: 20, position: { row: 6, col: 6 } } : p)),
+  });
+  saver.onModuleDestroy();
+  const reloaded = new RoomService();
+  reloaded.onModuleInit();
+  assert(!!reloaded.getRoom(keep.id), 'consistent ludo room should be restored');
+  assert(!reloaded.getRoom(stale.id), 'ludo room saved on another track layout should be dropped');
+  reloaded.onModuleDestroy();
+
   fs.rmSync(storePath, { force: true });
   console.log('room.service persistence: all assertions passed');
 }

@@ -51,7 +51,7 @@ describe('LudoEngineService', () => {
   });
 
   it('board() shows the movable piece on a cell shared with a finished one', () => {
-    // steps 60 and 61 share the last home cell; the finished piece must not hide the movable one
+    // last two steps share the last home cell; the finished piece must not hide the movable one
     const finished = onTrack('red-0', 'red', LUDO_TOTAL_STEPS);
     const last = onTrack('red-1', 'red', LUDO_TOTAL_STEPS - 1);
     service.syncState({
@@ -170,8 +170,8 @@ describe('LudoEngineService', () => {
     });
 
     it('does not capture an opponent occupying a safe (start) square', () => {
-      const redPiece = onTrack('red-0', 'red', 12);
-      const targetPos = ludoPositionForSteps('red', 14); // global index 14 = green's start square, safe
+      const redPiece = onTrack('red-0', 'red', 11);
+      const targetPos = ludoPositionForSteps('red', 13); // global index 13 = green's start square, safe
       const greenPiece = { ...onTrack('green-0', 'green', 0), position: targetPos };
 
       service.syncState({

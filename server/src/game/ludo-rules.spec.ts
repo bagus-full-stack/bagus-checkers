@@ -51,7 +51,7 @@ function main(): void {
   assert(capturedGreen!.trackIndex === undefined, 'captured token should be sent back to base');
 
   // Win condition: all 4 tokens at the final step.
-  const totalSteps = 61;
+  const totalSteps = 57;
   const winState: LudoGameState = {
     ...afterCapture!,
     currentPlayer: 'red',

@@ -12,15 +12,15 @@ import { RouterLink } from '@angular/router';
         <a routerLink="/" class="back-link" aria-label="Retour à l'accueil">
           ← Accueil
         </a>
-        <h1 class="tutorial-title">Règles du Jeu de Dames</h1>
+        <h1 class="tutorial-title">Règles du Ludo</h1>
       </header>
 
       <main class="tutorial-main">
         <nav class="tutorial-nav" aria-label="Sections du tutoriel">
           <button type="button" class="nav-link" (click)="scrollTo('basics')">Les bases</button>
           <button type="button" class="nav-link" (click)="scrollTo('movement')">Déplacements</button>
-          <button type="button" class="nav-link" (click)="scrollTo('capture')">Prises</button>
-          <button type="button" class="nav-link" (click)="scrollTo('promotion')">Promotion</button>
+          <button type="button" class="nav-link" (click)="scrollTo('capture')">Captures</button>
+          <button type="button" class="nav-link" (click)="scrollTo('finish')">Arrivée</button>
           <button type="button" class="nav-link" (click)="scrollTo('winning')">Victoire</button>
         </nav>
 
@@ -31,17 +31,18 @@ import { RouterLink } from '@angular/router';
               <div class="info-card">
                 <h3>Le plateau</h3>
                 <p>
-                  Le jeu de Dames Internationales se joue sur un plateau de
-                  <strong>100 cases (10x10)</strong>, avec des cases claires et foncées alternées.
-                  Seules les <strong>50 cases foncées</strong> sont utilisées.
+                  Le plateau est une grille de <strong>15x15 cases</strong> avec
+                  <strong>4 cours</strong> dans les coins (rouge, verte, jaune, bleue) et un
+                  <strong>circuit commun de 52 cases</strong>. Chaque couleur a une
+                  <strong>colonne d'arrivée de 5 cases</strong> qui mène au centre.
                 </p>
               </div>
               <div class="info-card">
-                <h3>Les pièces</h3>
+                <h3>Les pions</h3>
                 <p>
-                  Chaque joueur commence avec <strong>20 pions</strong>.
-                  Les Blancs jouent toujours en premier.
-                  Les pions sont placés sur les 4 premières rangées de chaque côté.
+                  De <strong>2 à 4 joueurs</strong>. Chacun a <strong>4 pions</strong>, qui
+                  commencent dans sa cour. Chaque couleur a sa forme : rouge ▲, vert ■,
+                  jaune ◆, bleu ●. Le Rouge joue en premier, puis on tourne dans le sens horaire.
                 </p>
               </div>
             </div>
@@ -51,65 +52,67 @@ import { RouterLink } from '@angular/router';
             <h2 id="movement-heading" class="section-title">Déplacements</h2>
             <div class="section-content">
               <div class="info-card">
-                <h3>Pions</h3>
+                <h3>Le dé</h3>
                 <ul>
-                  <li>Se déplacent en <strong>diagonale</strong> uniquement</li>
-                  <li>Avancent d'<strong>une case</strong> vers l'avant</li>
-                  <li>Ne peuvent pas reculer (sauf pour les prises)</li>
+                  <li>À votre tour, lancez le dé puis jouez <strong>un pion</strong> d'autant de cases</li>
+                  <li>Un pion avance toujours dans le <strong>sens horaire</strong></li>
+                  <li>Si aucun pion ne peut bouger, votre tour est passé</li>
                 </ul>
               </div>
               <div class="info-card highlight">
-                <h3>Dames (pièces promues)</h3>
+                <h3>Sortir de la cour</h3>
+                <p>
+                  Il faut un <strong>6</strong> pour sortir un pion. Il arrive sur votre
+                  <strong>case de départ</strong>, la case de votre couleur marquée d'une étoile ★.
+                </p>
+              </div>
+              <div class="info-card warning">
+                <h3>⚠️ Les 6</h3>
                 <ul>
-                  <li>Se déplacent en diagonale dans <strong>toutes les directions</strong></li>
-                  <li>Peuvent parcourir <strong>plusieurs cases</strong> (Dames volantes)</li>
-                  <li>Très puissantes stratégiquement</li>
+                  <li>Un 6 vous fait <strong>rejouer</strong> après votre coup</li>
+                  <li>Au <strong>3e 6 de suite</strong>, vous jouez ce coup puis votre tour s'arrête</li>
                 </ul>
               </div>
             </div>
           </section>
 
           <section id="capture" class="tutorial-section" aria-labelledby="capture-heading">
-            <h2 id="capture-heading" class="section-title">Prises</h2>
+            <h2 id="capture-heading" class="section-title">Captures</h2>
             <div class="section-content">
-              <div class="info-card warning">
-                <h3>⚠️ Règle importante : Prise obligatoire</h3>
+              <div class="info-card">
+                <h3>Renvoyer un pion</h3>
                 <p>
-                  Si vous pouvez prendre une pièce adverse, <strong>vous devez le faire</strong>.
-                  C'est obligatoire, pas optionnel !
+                  Si votre pion s'arrête sur une case occupée par un pion adverse, celui-ci est
+                  <strong>renvoyé dans sa cour</strong>. Il lui faudra un nouveau 6 pour repartir.
                 </p>
               </div>
-              <div class="info-card">
-                <h3>Comment prendre</h3>
+              <div class="info-card success">
+                <h3>★ Cases protégées</h3>
                 <ul>
-                  <li>Sautez par-dessus la pièce adverse en diagonale</li>
-                  <li>La case d'arrivée doit être libre</li>
-                  <li>La pièce capturée est retirée du plateau</li>
-                </ul>
-              </div>
-              <div class="info-card">
-                <h3>Prises multiples</h3>
-                <ul>
-                  <li>Si après une prise vous pouvez en faire une autre, continuez !</li>
-                  <li>Vous devez effectuer la séquence qui capture le <strong>maximum de pièces</strong></li>
-                  <li>Les pièces sont retirées après la fin de la séquence complète</li>
+                  <li>Les <strong>4 cases de départ</strong> (étoile) sont protégées : on n'y capture jamais</li>
+                  <li>Votre colonne d'arrivée est privée : aucun adversaire ne peut y entrer</li>
+                  <li>Vos propres pions peuvent partager une case</li>
                 </ul>
               </div>
             </div>
           </section>
 
-          <section id="promotion" class="tutorial-section" aria-labelledby="promotion-heading">
-            <h2 id="promotion-heading" class="section-title">Promotion en Dame</h2>
+          <section id="finish" class="tutorial-section" aria-labelledby="finish-heading">
+            <h2 id="finish-heading" class="section-title">Arrivée</h2>
             <div class="section-content">
-              <div class="info-card success">
-                <h3>👑 Devenir une Dame</h3>
+              <div class="info-card">
+                <h3>Rentrer à la maison</h3>
                 <p>
-                  Lorsqu'un pion atteint la <strong>dernière rangée</strong> du plateau
-                  (le côté opposé à son départ), il est <strong>promu en Dame</strong>.
+                  Après un tour complet du circuit, votre pion quitte le circuit et monte dans votre
+                  <strong>colonne d'arrivée</strong> (5 cases). Il faut <strong>57 pas</strong> au total,
+                  depuis la case de départ, pour finir.
                 </p>
+              </div>
+              <div class="info-card highlight">
+                <h3>Le nombre exact</h3>
                 <p>
-                  La Dame est identifiée par une couronne et possède des pouvoirs de
-                  déplacement étendus.
+                  Pour terminer, il faut le <strong>nombre exact</strong>. Si le dé dépasse
+                  la dernière case, ce pion ne peut pas jouer.
                 </p>
               </div>
             </div>
@@ -121,26 +124,25 @@ import { RouterLink } from '@angular/router';
               <div class="info-card">
                 <h3>🏆 Vous gagnez si :</h3>
                 <ul>
-                  <li>Vous capturez <strong>toutes les pièces</strong> adverses</li>
-                  <li>L'adversaire ne peut plus faire de <strong>coup légal</strong> (bloqué)</li>
-                  <li>L'adversaire <strong>abandonne</strong></li>
+                  <li>Vos <strong>4 pions</strong> sont arrivés au bout de la colonne d'arrivée</li>
+                  <li>En ligne, tous les autres joueurs ont <strong>quitté ou abandonné</strong></li>
                 </ul>
               </div>
               <div class="info-card">
-                <h3>Match nul</h3>
+                <h3>Quitter en cours de partie</h3>
                 <p>
-                  La partie peut se terminer par un match nul si les deux joueurs
-                  sont d'accord ou si la position se répète plusieurs fois.
+                  En ligne, un joueur qui quitte ou abandonne retire ses pions du plateau.
+                  La partie continue entre les joueurs restants.
                 </p>
               </div>
             </div>
           </section>
 
           <div class="cta-section">
-            <a routerLink="/game/local" class="cta-btn primary">
+            <a routerLink="/game/local" [queryParams]="{ variant: 'ludo' }" class="cta-btn primary">
               Jouer maintenant
             </a>
-            <a routerLink="/game/ai" class="cta-btn">
+            <a routerLink="/game/ai" [queryParams]="{ variant: 'ludo' }" class="cta-btn">
               S'entraîner contre l'IA
             </a>
           </div>
