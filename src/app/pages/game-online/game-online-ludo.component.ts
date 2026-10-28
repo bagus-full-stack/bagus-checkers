@@ -318,8 +318,12 @@ function mapServerLudoState(raw: Omit<LudoGameState, 'result' | 'moveHistory'> &
       border: 1px solid #e5e7eb;
     }
 
-    :host-context(.light-theme) .opponent-section .section-label {
+    :host-context(.light-theme) .section-label {
       color: #4b5563;
+    }
+
+:host-context(.light-theme) .chat-section .section-label {
+      color: #d1d5db;
     }
 
     .opponent-section {
