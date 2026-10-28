@@ -97,7 +97,7 @@ const LUDO_STAR_CELLS = new Set(['3,6', '6,11', '11,8', '8,3']);
       grid-template-rows: repeat(15, 1fr);
       background: white;
       border: 3px solid #333;
-      gap: 1px; /* border simulation */
+      gap: 0; /* track cells draw their own borders; yards stay solid */
     }
 
     .ludo-cell {
@@ -108,6 +108,9 @@ const LUDO_STAR_CELLS = new Set(['3,6', '6,11', '11,8', '8,3']);
       justify-content: center;
       border: 1px solid rgba(0,0,0,0.1);
     }
+
+    /* Yards are one solid block each (as on a real board): no grid lines between their cells */
+    .ludo-cell[class*='base-'] { border: none; }
 
     .ludo-piece-slot {
       width: 80%;

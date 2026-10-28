@@ -53,6 +53,8 @@ test.describe('Board matches the standard Ludo layout', () => {
         }
       }
       expect(await bg(page, r0, c0)).toBe(rgb(YARD_BG[color as keyof typeof YARD_BG]));
+      // solid yard: no grid lines between its cells
+      expect(await cell(page, r0 + 2, c0 + 3).evaluate((e) => getComputedStyle(e).borderTopWidth)).toBe('0px');
     }
   });
 
