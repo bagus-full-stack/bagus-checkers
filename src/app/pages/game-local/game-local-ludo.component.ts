@@ -387,6 +387,16 @@ export class GameLocalLudoComponent implements OnInit {
   readonly showModal = signal(true);
   readonly isRolling = signal(false);
 
+  constructor() {
+    // Auto-move: a single legal move (e.g. only one token out, no 6) plays itself
+    effect((onCleanup) => {
+      const options = this.ludoEngine.movableOptions();
+      if (this.status() !== 'playing' || options.length !== 1 || false) return;
+      const timer = setTimeout(() => this.ludoEngine.moveTo(options[0].piece, options[0].destination), 450);
+      onCleanup(() => clearTimeout(timer));
+    });
+  }
+
   ngOnInit(): void {
     this.ludoEngine.startNewGame(['red', 'green', 'yellow', 'blue']);
   }

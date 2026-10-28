@@ -36,25 +36,25 @@ import {
             <span class="selector-label">Votre couleur :</span>
             <button
               class="color-btn"
-              [class.active]="playerColor() === 'red'"
+              [class.active]="playerColor() === 'red'" [attr.aria-pressed]="playerColor() === 'red'"
               (click)="setPlayerColor('red')"
               aria-label="Rouge : jouer avec les rouges"
             >Rouge</button>
             <button
               class="color-btn"
-              [class.active]="playerColor() === 'blue'"
+              [class.active]="playerColor() === 'blue'" [attr.aria-pressed]="playerColor() === 'blue'"
               (click)="setPlayerColor('blue')"
               aria-label="Bleu : jouer avec les bleus"
             >Bleu</button>
             <button
               class="color-btn"
-              [class.active]="playerColor() === 'green'"
+              [class.active]="playerColor() === 'green'" [attr.aria-pressed]="playerColor() === 'green'"
               (click)="setPlayerColor('green')"
               aria-label="Vert : jouer avec les verts"
             >Vert</button>
             <button
               class="color-btn"
-              [class.active]="playerColor() === 'yellow'"
+              [class.active]="playerColor() === 'yellow'" [attr.aria-pressed]="playerColor() === 'yellow'"
               (click)="setPlayerColor('yellow')"
               aria-label="Jaune : jouer avec les jaunes"
             >Jaune</button>
@@ -64,6 +64,8 @@ import {
       </header>
 
       <main class="game-main">
+        <details class="ai-setup-box">
+          <summary>Réglages : joueurs et algorithmes de l'IA</summary>
         <section class="ai-setup" aria-label="Réglages de la partie">
           <label class="setup-field">
             <span>Joueurs</span>
@@ -98,6 +100,7 @@ import {
             </label>
           }
         </section>
+        </details>
 
         <section class="board-section" aria-label="Plateau de jeu">
           <div style="display:flex; flex-direction:column; gap:1rem; align-items:center; width:100%;">
@@ -243,6 +246,14 @@ import {
       color: #4b5563;
     }
 
+    /* Beats the global button styles, which left the chosen color almost unmarked */
+    .color-selector .color-btn.active {
+      background: #4f46e5 !important; /* global light-theme button rules out-rank any selector */
+      color: #ffffff !important;
+      font-weight: 700;
+      box-shadow: 0 0 0 2px #c7d2fe;
+    }
+
     .color-btn {
       padding: 0.375rem 0.75rem;
       background: transparent;
@@ -333,6 +344,15 @@ import {
       color: #111827;
     }
 
+    .ai-setup-box { width: 100%; padding: 0 1rem; }
+    .ai-setup-box summary {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--text-primary);
+      padding: 0.5rem 0;
+    }
+    .ai-setup-box summary:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
     .ai-setup {
       display: flex;
       flex-wrap: wrap;
@@ -605,6 +625,13 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
   private colors: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
 
   constructor() {
+    // Auto-move: a single legal move (e.g. only one token out, no 6) plays itself
+    effect((onCleanup) => {
+      const options = this.ludoEngine.movableOptions();
+      if (this.status() !== 'playing' || options.length !== 1 || this.currentPlayer() !== this.playerColor()) return;
+      const timer = setTimeout(() => this.ludoEngine.moveTo(options[0].piece, options[0].destination), 450);
+      onCleanup(() => clearTimeout(timer));
+    });
     effect(() => {
       const currentPlayerColor = this.currentPlayer();
       const st = this.status();

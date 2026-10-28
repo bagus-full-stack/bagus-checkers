@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { GameAiLudoComponent } from './game-ai-ludo.component';
@@ -127,6 +128,23 @@ describe('GameAiLudoComponent', () => {
 
     pick(fixture, 'select[aria-label="Même algorithme pour tous les IA"]', 'hard');
     expect(c.difficulties()).toEqual({ red: 'hard', green: 'hard', yellow: 'hard', blue: 'hard' });
+  });
+
+  it('plays a single legal move by itself, but waits when there is a choice', () => {
+    const one = [{ piece: { id: 'r-0' }, steps: 3, destination: { row: 1, col: 1 }, capturedPieceIds: [] }];
+    const two = [...one, { piece: { id: 'r-1' }, steps: 4, destination: { row: 2, col: 2 }, capturedPieceIds: [] }];
+    const options = signal<unknown[]>(two);
+    vi.spyOn(ludoEngine, 'movableOptions').mockImplementation((() => options()) as never);
+    const move = vi.spyOn(ludoEngine, 'moveTo').mockReturnValue(true);
+    setup();
+    TestBed.tick();
+    vi.advanceTimersByTime(1000);
+    expect(move).not.toHaveBeenCalled();
+
+    options.set(one);
+    TestBed.tick();
+    vi.advanceTimersByTime(1000);
+    expect(move).toHaveBeenCalledTimes(1);
   });
 
   it('switches the human player color and restarts the game', () => {
