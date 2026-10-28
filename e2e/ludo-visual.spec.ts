@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, Page, test } from '@playwright/test';
+import { devices, expect, Page, test } from '@playwright/test';
 
 const rgb = (hex: string) => {
   const n = parseInt(hex.slice(1), 16);
@@ -297,4 +297,55 @@ test.describe('Keyboard and colour-independence', () => {
     const marks = await page.locator('app-piece .token-inner').allTextContents();
     expect(new Set(marks).size).toBe(4);
   });
+});
+
+test.describe('Screen-reader view (accessibility tree)', () => {
+  test('board, tokens, dice and turn status are announced with meaningful names', async ({ page }) => {
+    await openLocal(page);
+    const tree = await page.locator('body').ariaSnapshot();
+    console.log('ARIA', tree.split('\n').filter((l) => /group|img|button|status|heading/.test(l)).slice(0, 20).join(' | '));
+    expect(tree).toContain('Plateau de Ludo');
+    expect(tree).toContain('Pion rouge');
+    expect(tree).toContain('Pion vert');
+    expect(tree).toContain('Pion jaune');
+    expect(tree).toContain('Pion bleu');
+    expect(tree).toMatch(/Lancer le dé/);
+    expect(tree).toMatch(/Tour du joueur/);
+  });
+
+  test('axe best-practice and WCAG 2.2 AA rules', async ({ page }) => {
+    await openLocal(page);
+    const res = await new AxeBuilder({ page }).withTags(['best-practice', 'wcag22aa']).analyze();
+    const out = res.violations.map((v) => ({ rule: v.id, impact: v.impact, n: v.nodes.length, sample: v.nodes[0].html.slice(0, 100) }));
+    console.log('AXE best-practice', JSON.stringify(out));
+    expect(out).toEqual([]);
+  });
+});
+
+test.describe('Touch devices (emulated phones)', () => {
+  for (const name of ['iPhone 13', 'Pixel 7']) {
+    test(`${name}: board fits and a token can be played by tap`, async ({ browser }) => {
+      const ctx = await browser.newContext({ ...devices[name] });
+      const page = await ctx.newPage();
+      await page.goto('/game/local?variant=ludo');
+      await expect(page.locator('.ludo-cell')).toHaveCount(225);
+      const fit = await page.evaluate(() => {
+        const g = document.querySelector('.ludo-grid')!.getBoundingClientRect();
+        return { overflowX: document.documentElement.scrollWidth > window.innerWidth, inside: g.left >= 0 && g.right <= window.innerWidth, cell: g.width / 15 };
+      });
+      console.log(`TOUCH ${name}`, JSON.stringify(fit));
+      expect(fit.overflowX).toBe(false);
+      expect(fit.inside).toBe(true);
+      await page.clock.install();
+      for (let i = 0; i < 60 && !(await page.locator('app-piece.movable').count()); i++) {
+        await page.locator('.dice').tap();
+        await page.clock.runFor(700);
+        await page.clock.runFor(1200);
+      }
+      await expect(page.locator('app-piece.movable').first()).toBeVisible();
+      await page.locator('app-piece.movable').first().tap();
+      await expect(page.locator('app-piece.movable')).toHaveCount(0);
+      await ctx.close();
+    });
+  }
 });

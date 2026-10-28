@@ -308,10 +308,20 @@ function mapServerLudoState(raw: Omit<LudoGameState, 'result' | 'moveHistory'> &
     .section-label {
       font-size: 0.875rem;
       font-weight: 600;
-      color: #9ca3af;
+      color: #d1d5db;
       margin: 0 0 0.5rem 0;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+    }
+
+:host-context(.light-theme) .opponent-section {
+      background: #ffffff;
+      color: #111827;
+      border: 1px solid #e5e7eb;
+    }
+
+    :host-context(.light-theme) .opponent-section .section-label {
+      color: #4b5563;
     }
 
     .opponent-section {
@@ -505,7 +515,7 @@ function mapServerLudoState(raw: Omit<LudoGameState, 'result' | 'moveHistory'> &
     }
 
     .chat-empty {
-      color: #6b7280;
+      color: #9ca3af;
       text-align: center;
       font-style: italic;
       margin: auto;

@@ -27,7 +27,7 @@ describe('GameAiLudoComponent', () => {
     return fixture;
   }
 
-  it('starts a red-vs-blue game against the AI on init', () => {
+  it('starts a four-seat game, human red first, against three AI seats on init', () => {
     const fixture = setup();
     expect(ludoEngine.status()).toBe('playing');
     expect(ludoEngine.currentPlayer()).toBe('red');
@@ -55,13 +55,13 @@ describe('GameAiLudoComponent', () => {
 
   it('automatically rolls for the AI once it becomes their turn', () => {
     const fixture = setup();
-    mockRandomForRoll(3); // no base-exit move -> turn passes straight to the AI (blue)
+    mockRandomForRoll(3); // no base-exit move -> turn passes straight to the AI (green)
 
     fixture.componentInstance.onPlayerRollDice();
     vi.advanceTimersByTime(500);
     fixture.detectChanges();
 
-    expect(ludoEngine.currentPlayer()).toBe('blue');
+    expect(ludoEngine.currentPlayer()).toBe('green');
     expect(fixture.componentInstance.isAiThinking()).toBe(true);
 
     const rollDiceSpy = vi.spyOn(ludoEngine, 'rollDice');
@@ -69,7 +69,8 @@ describe('GameAiLudoComponent', () => {
     fixture.detectChanges();
 
     expect(rollDiceSpy).toHaveBeenCalled();
-    expect(fixture.componentInstance.isAiThinking()).toBe(false);
+    // green had no move, so the next AI seat (yellow) is up and starts thinking right away
+    expect(ludoEngine.currentPlayer()).toBe('yellow');
   });
 
   it('automatically moves the AI piece out of its base after rolling a six', () => {
@@ -78,7 +79,7 @@ describe('GameAiLudoComponent', () => {
     fixture.componentInstance.onPlayerRollDice();
     vi.advanceTimersByTime(500);
     fixture.detectChanges();
-    expect(ludoEngine.currentPlayer()).toBe('blue');
+    expect(ludoEngine.currentPlayer()).toBe('green');
 
     mockRandomForRoll(6);
     vi.advanceTimersByTime(1000);
@@ -89,13 +90,13 @@ describe('GameAiLudoComponent', () => {
     vi.advanceTimersByTime(1000);
     fixture.detectChanges();
 
-    const blueLeftBase = ludoEngine
+    const greenLeftBase = ludoEngine
       .board()
       .flat()
-      .some((piece) => piece?.color === 'blue' && piece.trackIndex !== undefined);
-    expect(blueLeftBase).toBe(true);
+      .some((piece) => piece?.color === 'green' && piece.trackIndex !== undefined);
+    expect(greenLeftBase).toBe(true);
     // rolling a six grants the AI another turn, so it immediately queues another roll
-    expect(ludoEngine.currentPlayer()).toBe('blue');
+    expect(ludoEngine.currentPlayer()).toBe('green');
   });
 
   it('switches the human player color and restarts the game', () => {

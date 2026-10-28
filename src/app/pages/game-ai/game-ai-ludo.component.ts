@@ -45,6 +45,18 @@ import {
               (click)="setPlayerColor('blue')"
               aria-label="Bleu : jouer avec les bleus"
             >Bleu</button>
+            <button
+              class="color-btn"
+              [class.active]="playerColor() === 'green'"
+              (click)="setPlayerColor('green')"
+              aria-label="Vert : jouer avec les verts"
+            >Vert</button>
+            <button
+              class="color-btn"
+              [class.active]="playerColor() === 'yellow'"
+              (click)="setPlayerColor('yellow')"
+              aria-label="Jaune : jouer avec les jaunes"
+            >Jaune</button>
           </div>
           <select
             class="difficulty-select"
@@ -558,9 +570,9 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
     this.isAiThinking.set(false);
     this.showModal.set(true);
 
-    // Play with 2 colors for simplicity in AI for now
-    const aiColor = this.playerColor() === 'red' ? 'blue' : 'red';
-    this.ludoEngine.startNewGame([this.playerColor(), aiColor]);
+    // Human plus three AI seats, in clockwise order starting with the human.
+    const start = this.colors.indexOf(this.playerColor());
+    this.ludoEngine.startNewGame([...this.colors.slice(start), ...this.colors.slice(0, start)]);
   }
 
   setDifficulty(event: Event): void {

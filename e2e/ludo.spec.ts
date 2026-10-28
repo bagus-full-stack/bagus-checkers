@@ -105,7 +105,7 @@ test.describe('Ludo local game', () => {
 test.describe('Ludo vs AI', () => {
   test('AI answers and the game reaches a winner', async ({ page }) => {
     await page.goto('/game/ai?variant=ludo');
-    await expect(page.locator('app-piece')).toHaveCount(8);
+    await expect(page.locator('app-piece')).toHaveCount(16);
     const stats = await playToEnd(page);
     console.log('ai game', stats.rolls, 'human rolls', stats.moves, 'human moves');
     expect(stats.mixed).toEqual([]);
