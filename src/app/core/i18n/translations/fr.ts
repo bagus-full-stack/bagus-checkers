@@ -31,8 +31,6 @@ export const FR_TRANSLATIONS = {
   'home.tutorialDesc': 'Apprenez les règles du jeu',
   'home.replays': 'Replays',
   'home.replaysDesc': 'Revoyez vos parties',
-  'home.spectate': 'Spectateur',
-  'home.spectateDesc': 'Regardez des parties en cours',
   'home.leaderboard': 'Classement',
   'home.leaderboardDesc': 'Meilleurs joueurs',
   'home.profile': 'Profil',
@@ -130,13 +128,6 @@ export const FR_TRANSLATIONS = {
   'lobby.join': 'Rejoindre',
   'lobby.waiting': 'En attente',
   'lobby.inProgress': 'En cours',
-
-  // Spectate
-  'spectate.title': 'Spectateur',
-  'spectate.liveGames': 'Parties en cours',
-  'spectate.noGames': 'Aucune partie en cours',
-  'spectate.watch': 'Regarder',
-  'spectate.viewers': 'spectateurs',
 
   // Replays
   'replays.title': 'Replays',

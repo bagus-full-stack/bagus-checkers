@@ -48,6 +48,81 @@ async function ludoChecks(rooms: RoomService): Promise<void> {
   gateway.onModuleDestroy();
 }
 
+/** Reconnect grace, draughts move timer, and error replies for refused actions. */
+async function sessionChecks(rooms: RoomService): Promise<void> {
+  const gateway = new GameGateway(rooms, new GameService());
+  const events: { event: string; payload: any }[] = [];
+  gateway.server = { to: () => ({ emit: (event: string, payload: any) => events.push({ event, payload }) }) } as any;
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  const sent = new Map<string, string[]>();
+  const connect = (id: string, token?: string) => {
+    const log: string[] = [];
+    sent.set(id, log);
+    const client = {
+      id,
+      handshake: { auth: { playerName: id, playerToken: token } },
+      emit: (event: string, payload?: any) => log.push(event + (payload?.code ? ':' + payload.code : '')),
+      join() {},
+      leave() {},
+    } as any;
+    gateway.handleConnection(client);
+    return client;
+  };
+  const idOf = (socketId: string) => (gateway as any).players.get(socketId)?.id as string | undefined;
+  const startGame = (tokenA: string, tokenB: string, idA: string, idB: string) => {
+    const a = connect(idA, tokenA);
+    const b = connect(idB, tokenB);
+    gateway.handleCreateRoom(a, { name: 'T', isPrivate: false, variant: 'international' } as any);
+    const room = rooms.getRoomByPlayerId(idOf(idA)!)!;
+    gateway.handleJoinRoom(b, { roomId: room.id } as any);
+    gateway.handlePlayerReady(a, { roomId: room.id, isReady: true } as any);
+    gateway.handlePlayerReady(b, { roomId: room.id, isReady: true } as any);
+    return { a, b, room };
+  };
+
+  // A dropped connection keeps its seat, and the same token takes it back with the board replayed.
+  gateway.graceMs = 80;
+  gateway.checkersTurnMs = 10_000;
+  const tokenA = 'token-aaaaaaaaaaaaaaaa';
+  const first = startGame(tokenA, 'token-bbbbbbbbbbbbbbbb', 'r1', 'r2');
+  const idA = idOf('r1')!;
+  gateway.handleDisconnect(first.a);
+  assert(rooms.getRoomByPlayerId(idA)?.id === first.room.id, 'a dropped player keeps their seat during the grace period');
+  const back = connect('r1-new', tokenA);
+  assert(idOf('r1-new') === idA, 'the same token gets the same player back');
+  const log = sent.get('r1-new')!;
+  assert(log.includes('room:joined') && log.includes('game:started'), 'the returning player gets the room and the board replayed');
+  await wait(120);
+  assert(rooms.getRoomByPlayerId(idA) !== null, 'the resumed player must not be removed when the old grace timer would have fired');
+
+  // Without coming back, the seat is released after the grace period.
+  gateway.handleDisconnect(back);
+  await wait(130);
+  assert(rooms.getRoomByPlayerId(idA) === null, 'the seat is released once the grace period is over');
+  gateway.handleDisconnect(first.b);
+
+  // Draughts: running out of time forfeits.
+  gateway.checkersTurnMs = 40;
+  events.length = 0;
+  const timed = startGame('token-cccccccccccccccc', 'token-dddddddddddddddd', 'r3', 'r4');
+  await wait(100);
+  const ended = events.find((e) => e.event === 'game:ended');
+  assert(ended?.payload.result.reason === 'timeout' && ended.payload.result.winner === 'black', 'white (to move) loses on time');
+  assert(timed.room.status === 'finished', 'the room is finished after a timeout');
+
+  // A refused action gets an answer.
+  const stray = connect('r5', 'token-eeeeeeeeeeeeeeee');
+  gateway.handleGameMove(stray, { roomId: 'NOPE', move: {} } as any);
+  gateway.handleLudoRoll(stray, { roomId: 'NOPE' } as any);
+  assert(sent.get('r5')!.filter((e) => e === 'error:NOT_IN_ROOM').length === 2, 'a move or roll outside a room gets NOT_IN_ROOM');
+
+  gateway.handleDisconnect(timed.a);
+  gateway.handleDisconnect(timed.b);
+  gateway.handleDisconnect(stray);
+  gateway.onModuleDestroy();
+}
+
 async function main(): Promise<void> {
   fs.rmSync(path.join(process.cwd(), 'data', 'rooms.db'), { force: true });
 
@@ -105,6 +180,7 @@ async function main(): Promise<void> {
   assert(rooms.getRoom(room.id) === null, 'empty room should be deleted');
 
   await ludoChecks(rooms);
+  await sessionChecks(rooms);
 
   rooms.onModuleDestroy();
   fs.rmSync(path.join(process.cwd(), 'data', 'rooms.db'), { force: true });

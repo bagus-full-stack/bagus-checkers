@@ -13,5 +13,4 @@ export * from './ludo-engine.service';
 export * from './audio.service';
 export * from './theme.service';
 export * from './keyboard.service';
-export * from './spectator.service';
 export * from '../i18n';

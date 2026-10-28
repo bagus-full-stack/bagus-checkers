@@ -26,14 +26,6 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client // Requires localStorage - client-side only
   },
   {
-    path: 'spectate',
-    renderMode: RenderMode.Client // Requires WebSocket - client-side only
-  },
-  {
-    path: 'spectate/:id',
-    renderMode: RenderMode.Client // Dynamic route - client-side only
-  },
-  {
     path: '**',
     renderMode: RenderMode.Prerender
   }

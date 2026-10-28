@@ -31,8 +31,6 @@ export const EN_TRANSLATIONS = {
   'home.tutorialDesc': 'Learn the rules',
   'home.replays': 'Replays',
   'home.replaysDesc': 'Review your games',
-  'home.spectate': 'Spectate',
-  'home.spectateDesc': 'Watch live games',
   'home.leaderboard': 'Leaderboard',
   'home.leaderboardDesc': 'Top players',
   'home.profile': 'Profile',
@@ -130,13 +128,6 @@ export const EN_TRANSLATIONS = {
   'lobby.join': 'Join',
   'lobby.waiting': 'Waiting',
   'lobby.inProgress': 'In progress',
-
-  // Spectate
-  'spectate.title': 'Spectate',
-  'spectate.liveGames': 'Live games',
-  'spectate.noGames': 'No games in progress',
-  'spectate.watch': 'Watch',
-  'spectate.viewers': 'viewers',
 
   // Replays
   'replays.title': 'Replays',

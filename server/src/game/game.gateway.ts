@@ -20,6 +20,14 @@ import { LudoGameState } from './ludo-rules';
 /** A Ludo player has this long per roll or move; two misses in a row drops them from the game. */
 export const LUDO_TURN_MS = 30_000;
 const LUDO_MAX_MISSES = 2;
+
+/** A draughts player has this long per move; running out forfeits the game. */
+export const CHECKERS_TURN_MS = 120_000;
+
+/** A dropped connection keeps its seat this long, so a network blip is not a forfeit. */
+export const RECONNECT_GRACE_MS = 45_000;
+
+const TOKEN_PATTERN = /^[\w-]{16,64}$/;
 import {
   RoomCreateDto,
   RoomJoinDto,
@@ -49,7 +57,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   private socketToPlayer = new Map<string, string>(); // socketId -> playerId
   private turnTimers = new Map<string, NodeJS.Timeout>(); // roomId -> pending Ludo turn timeout
   private misses = new Map<string, Map<string, number>>(); // roomId -> color -> idle turns in a row
+  private tokenOf = new Map<string, string>(); // socketId -> reconnect token
+  private graceTimers = new Map<string, { timer: NodeJS.Timeout; player: OnlinePlayer }>(); // token -> seat on hold
   turnMs = LUDO_TURN_MS;
+  checkersTurnMs = CHECKERS_TURN_MS;
+  graceMs = RECONNECT_GRACE_MS;
 
   constructor(
     private roomService: RoomService,
@@ -88,6 +100,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         result: { winner: leaverColor === 'white' ? 'black' : 'white', reason: 'resignation' },
       });
     }
+    this.armTurnTimer(room.id);
+  }
+
+  /** Tells the sender why nothing happened, so the page does not hang on a silent refusal. */
+  private fail(client: Socket, code: string, message: string): void {
+    client.emit('error', { code, message });
   }
 
   handleConnection(client: Socket) {
@@ -96,6 +114,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       typeof rawName === 'string' && rawName.trim()
         ? rawName.trim().slice(0, 24)
         : `Player${client.id.slice(0, 4)}`;
+    const rawToken = client.handshake.auth['playerToken'];
+    const token = typeof rawToken === 'string' && TOKEN_PATTERN.test(rawToken) ? rawToken : undefined;
+
+    // Same browser tab coming back inside the grace period: hand it its seat back.
+    const held = token ? this.graceTimers.get(token) : undefined;
+    if (token && held) {
+      clearTimeout(held.timer);
+      this.graceTimers.delete(token);
+      this.resumePlayer(client, held.player, token);
+      return;
+    }
+
     const playerId = uuidv4();
 
     const player: OnlinePlayer = {
@@ -108,32 +138,63 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     this.players.set(client.id, player);
     this.socketToPlayer.set(client.id, playerId);
+    if (token) this.tokenOf.set(client.id, token);
 
     client.emit('player:info', player);
     this.logger.log(`Player connected: ${player.name} (${playerId})`);
+  }
+
+  private resumePlayer(client: Socket, player: OnlinePlayer, token: string): void {
+    player.socketId = client.id;
+    player.isConnected = true;
+    this.players.set(client.id, player);
+    this.socketToPlayer.set(client.id, player.id);
+    this.tokenOf.set(client.id, token);
+
+    client.emit('player:info', player);
+    const room = this.roomService.updatePlayerConnection(player.id, client.id, true);
+    if (room) {
+      client.join(room.id);
+      client.emit('room:joined', { room, player });
+      this.server.to(room.id).emit('player:reconnected', { playerId: player.id });
+      // Replay the board the page missed while offline.
+      if (room.status === 'playing' && room.gameState) {
+        if (room.variant === 'ludo') client.emit('game:ludo:update', { gameState: room.gameState });
+        else client.emit('game:started', { room, initialState: room.gameState });
+      }
+    }
+    this.logger.log(`Player reconnected: ${player.name} (${player.id})`);
+  }
+
+  onModuleDestroy(): void {
+    this.turnTimers.forEach((t) => clearTimeout(t));
+    this.turnTimers.clear();
+    this.graceTimers.forEach(({ timer }) => clearTimeout(timer));
+    this.graceTimers.clear();
   }
 
   handleDisconnect(client: Socket) {
     const player = this.players.get(client.id);
     if (!player) return;
 
-    // Update room connection status
-    const room = this.roomService.updatePlayerConnection(
-      player.id,
-      client.id,
-      false
-    );
-
-    if (room) {
-      // Notify other player
-      this.server.to(room.id).emit('player:disconnected', { playerId: player.id });
-    }
-
-    // Ids are per-connection, so a dropped player can never come back: treat it as a leave.
-    this.removeFromRoom(player.id);
-
+    const token = this.tokenOf.get(client.id);
     this.players.delete(client.id);
     this.socketToPlayer.delete(client.id);
+    this.tokenOf.delete(client.id);
+
+    const room = this.roomService.updatePlayerConnection(player.id, client.id, false);
+    if (!room || !token) {
+      // Nothing to hold the seat for, or no way for the player to claim it back.
+      this.removeFromRoom(player.id);
+    } else {
+      this.server.to(room.id).emit('player:disconnected', { playerId: player.id });
+      const timer = setTimeout(() => {
+        this.graceTimers.delete(token);
+        this.removeFromRoom(player.id);
+      }, this.graceMs);
+      timer.unref();
+      this.graceTimers.set(token, { timer, player });
+    }
 
     this.logger.log(`Player disconnected: ${player.name}`);
   }
@@ -264,7 +325,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     if (!player) return;
 
     const room = this.roomOf(player.id, data.roomId);
-    if (!room || room.status !== 'playing') return;
+    if (!room) return this.fail(client, 'NOT_IN_ROOM', 'You are not in this room');
+    if (room.status !== 'playing') return this.fail(client, 'INVALID_MOVE', 'No game in progress');
 
     const playerColor = room.players?.find((p) => p.id === player.id)?.color;
     if (!playerColor) return;
@@ -303,6 +365,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
       this.logger.log(`Game ended in room ${room.id}, winner: ${newState.winner}`);
     }
+    this.armTurnTimer(room.id);
   }
 
   @SubscribeMessage('game:ludo:roll')
@@ -313,8 +376,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     const player = this.players.get(client.id);
     if (!player) return;
 
-    const room = this.roomService.getRoom(data.roomId);
-    if (!room || room.status !== 'playing' || room.variant !== 'ludo') return;
+    const room = this.roomOf(player.id, data.roomId);
+    if (!room) return this.fail(client, 'NOT_IN_ROOM', 'You are not in this room');
+    if (room.status !== 'playing' || room.variant !== 'ludo') return this.fail(client, 'INVALID_MOVE', 'No Ludo game in progress');
 
     const playerColor = room.players?.find((p) => p.id === player.id)?.color;
     if (!playerColor) return;
@@ -341,8 +405,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     const player = this.players.get(client.id);
     if (!player) return;
 
-    const room = this.roomService.getRoom(data.roomId);
-    if (!room || room.status !== 'playing' || room.variant !== 'ludo') return;
+    const room = this.roomOf(player.id, data.roomId);
+    if (!room) return this.fail(client, 'NOT_IN_ROOM', 'You are not in this room');
+    if (room.status !== 'playing' || room.variant !== 'ludo') return this.fail(client, 'INVALID_MOVE', 'No Ludo game in progress');
 
     const playerColor = room.players?.find((p) => p.id === player.id)?.color;
     if (!playerColor) return;
@@ -369,32 +434,43 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     this.armTurnTimer(room.id);
   }
 
-  onModuleDestroy(): void {
-    this.turnTimers.forEach((t) => clearTimeout(t));
-    this.turnTimers.clear();
-  }
-
-  /** (Re)starts the idle clock for the Ludo player to act; clears it when the game is not running. */
+  /** (Re)starts the idle clock for whoever must act; clears it when the game is not running. */
   private armTurnTimer(roomId: string): void {
     clearTimeout(this.turnTimers.get(roomId));
     this.turnTimers.delete(roomId);
     const room = this.roomService.getRoom(roomId);
-    const state = room?.gameState as LudoGameState | undefined;
-    if (!room || room.variant !== 'ludo' || room.status !== 'playing' || state?.status !== 'playing') {
+    const state = room?.gameState as { status?: string } | undefined;
+    if (!room || room.status !== 'playing' || state?.status !== 'playing') {
       this.misses.delete(roomId);
       return;
     }
-    const timer = setTimeout(() => this.onTurnTimeout(roomId), this.turnMs);
+    const ms = room.variant === 'ludo' ? this.turnMs : this.checkersTurnMs;
+    const timer = setTimeout(() => this.onTurnTimeout(roomId), ms);
     timer.unref();
     this.turnTimers.set(roomId, timer);
   }
 
-  /** The player to act stayed idle: play for them once, drop them on the second miss in a row. */
+  /**
+   * The player to act stayed idle. Draughts: they forfeit. Ludo: play for them once, drop them on
+   * the second miss in a row.
+   */
   private onTurnTimeout(roomId: string): void {
     this.turnTimers.delete(roomId);
     const room = this.roomService.getRoom(roomId);
     let state = room?.gameState as LudoGameState | undefined;
-    if (!room || room.status !== 'playing' || state?.status !== 'playing') return;
+    if (!room || room.status !== 'playing' || state?.status !== 'playing') {
+      this.misses.delete(roomId);
+      return;
+    }
+
+    if (room.variant !== 'ludo') {
+      this.roomService.endGame(roomId);
+      this.server.to(roomId).emit('game:ended', {
+        result: { winner: state.currentPlayer === 'white' ? 'black' : 'white', reason: 'timeout' },
+      });
+      this.logger.log(`Room ${roomId}: ${state.currentPlayer} ran out of time`);
+      return;
+    }
 
     const color = state.currentPlayer;
     const streaks = this.misses.get(roomId) ?? new Map<string, number>();

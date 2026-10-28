@@ -654,6 +654,7 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.gameId++; // an AI answer still in flight must not move after we leave
     if (this.aiTimeoutId) {
       clearTimeout(this.aiTimeoutId);
     }

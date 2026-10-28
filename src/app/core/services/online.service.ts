@@ -56,7 +56,7 @@ export class OnlineService {
     this._error.set(null);
 
     const socketOptions = {
-      auth: { playerName },
+      auth: { playerName, playerToken: this.getPlayerToken() },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
@@ -198,8 +198,15 @@ export class OnlineService {
       this._connectionStatus.set('reconnecting');
     });
 
-    // Player info
+    // Player info. A different id after a reconnect means the server gave our seat away:
+    // whatever room we still show is gone.
     this.socket.on('player:info', (player: OnlinePlayer) => {
+      const previous = this._currentPlayer();
+      if (previous && previous.id !== player.id && this._currentRoom()) {
+        this._currentRoom.set(null);
+        this._chatMessages.set([]);
+        this._error.set('Connexion perdue trop longtemps : la partie a été quittée');
+      }
       this._currentPlayer.set(player);
     });
 
@@ -270,8 +277,23 @@ export class OnlineService {
     // Errors
     this.socket.on('error', ({ code, message }) => {
       this._error.set(message);
+      if (code === 'NOT_IN_ROOM') this._currentRoom.set(null);
       console.error(`Server error [${code}]:`, message);
     });
+  }
+
+  /** Secret that lets this tab claim its seat back after a dropped connection (kept per tab). */
+  private getPlayerToken(): string {
+    const key = 'checkers.playerToken';
+    try {
+      const stored = sessionStorage.getItem(key);
+      if (stored) return stored;
+      const token = globalThis.crypto.randomUUID();
+      sessionStorage.setItem(key, token);
+      return token;
+    } catch {
+      return globalThis.crypto.randomUUID(); // storage blocked: no resume, but the game still works
+    }
   }
 
   /**

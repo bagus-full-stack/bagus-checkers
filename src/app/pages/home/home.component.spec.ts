@@ -27,10 +27,9 @@ describe('HomeComponent', () => {
   it('links each secondary menu button to its route', () => {
     const fixture = setup();
     const links = fixture.nativeElement.querySelectorAll('.secondary-btn');
-    expect(links[0].getAttribute('href')).toBe('/spectate');
-    expect(links[1].getAttribute('href')).toBe('/profile');
-    expect(links[2].getAttribute('href')).toBe('/leaderboard');
-    expect(links[3].getAttribute('href')).toBe('/replays');
+    expect(links[0].getAttribute('href')).toBe('/profile');
+    expect(links[1].getAttribute('href')).toBe('/leaderboard');
+    expect(links[2].getAttribute('href')).toBe('/replays');
   });
 
   it('shows French translated labels by default', () => {

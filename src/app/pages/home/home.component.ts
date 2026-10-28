@@ -59,10 +59,6 @@ import { I18nService } from '../../core/services';
       </nav>
 
       <nav class="secondary-menu" aria-label="Menu secondaire">
-        <a routerLink="/spectate" class="secondary-btn">
-          <span class="btn-icon" aria-hidden="true">👁️</span>
-          <span>{{ i18n.t('home.spectate') }}</span>
-        </a>
         <a routerLink="/profile" class="secondary-btn">
           <span class="btn-icon" aria-hidden="true">👤</span>
           <span>{{ i18n.t('home.profile') }}</span>
