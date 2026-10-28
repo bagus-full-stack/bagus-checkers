@@ -99,6 +99,36 @@ describe('GameAiLudoComponent', () => {
     expect(ludoEngine.currentPlayer()).toBe('green');
   });
 
+  function pick(fixture: ReturnType<typeof setup>, selector: string, value: string) {
+    const el: HTMLSelectElement = fixture.nativeElement.querySelector(selector);
+    el.value = value;
+    el.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+  }
+
+  it('lets the human choose 2, 3 or 4 players (two sit opposite each other)', () => {
+    const fixture = setup();
+    pick(fixture, 'select[aria-label="Nombre de joueurs"]', '2');
+    expect(ludoEngine.gameState()!.players).toEqual(['red', 'yellow']);
+    expect(fixture.nativeElement.querySelectorAll('.ai-setup .setup-field').length).toBe(3); // count + all + 1 AI seat
+
+    pick(fixture, 'select[aria-label="Nombre de joueurs"]', '3');
+    expect(ludoEngine.gameState()!.players).toEqual(['red', 'green', 'yellow']);
+
+    fixture.componentInstance.setPlayerColor('blue');
+    expect(ludoEngine.gameState()!.players).toEqual(['blue', 'red', 'green']);
+  });
+
+  it('gives each AI seat its own algorithm, or one for all at once', () => {
+    const fixture = setup();
+    const c = fixture.componentInstance;
+    pick(fixture, 'select[aria-label="Algorithme IA Vert"]', 'easy');
+    expect(c.difficulties()).toMatchObject({ green: 'easy', yellow: 'medium', blue: 'medium' });
+
+    pick(fixture, 'select[aria-label="Même algorithme pour tous les IA"]', 'hard');
+    expect(c.difficulties()).toEqual({ red: 'hard', green: 'hard', yellow: 'hard', blue: 'hard' });
+  });
+
   it('switches the human player color and restarts the game', () => {
     const fixture = setup();
     fixture.componentInstance.setPlayerColor('blue');

@@ -34,7 +34,7 @@ const LUDO_STAR_CELLS = new Set(['3,6', '6,11', '11,8', '8,3']);
   imports: [CommonModule, PieceComponent],
   template: `
     <div class="ludo-board-container" role="group" aria-label="Plateau de Ludo">
-      <div class="ludo-grid">
+      <div class="ludo-grid" [attr.data-active]="diceCorner()">
         @for (row of [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]; track row) {
           @for (col of [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]; track col) {
             <div
@@ -68,6 +68,17 @@ const LUDO_STAR_CELLS = new Set(['3,6', '6,11', '11,8', '8,3']);
     :host {
       display: block;
       width: 100%;
+    }
+
+    /* The yard of the player to move breathes slowly (under 3 flashes a second, off for reduced motion) */
+    @keyframes yard-pulse { 50% { filter: brightness(1.18) saturate(1.4); } }
+    @media (prefers-reduced-motion: no-preference) {
+      .ludo-grid[data-active='red'] .base-red,
+      .ludo-grid[data-active='green'] .base-green,
+      .ludo-grid[data-active='yellow'] .base-yellow,
+      .ludo-grid[data-active='blue'] .base-blue {
+        animation: yard-pulse 1.2s ease-in-out infinite;
+      }
     }
 
     .dice-slot {

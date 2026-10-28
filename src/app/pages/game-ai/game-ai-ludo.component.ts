@@ -11,6 +11,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { LudoEngineService } from '../../core/services';
+import { ludoAiMove } from '../../core/ai';
 import { AIDifficulty, TimeMode, PlayerColor, Piece } from '../../core/models';
 import {
   LudoBoardComponent,
@@ -58,20 +59,46 @@ import {
               aria-label="Jaune : jouer avec les jaunes"
             >Jaune</button>
           </div>
-          <select
-            class="difficulty-select"
-            [value]="difficulty()"
-            (change)="setDifficulty($event)"
-            aria-label="Niveau de l'IA"
-          >
-            <option value="easy">Facile</option>
-            <option value="medium">Moyen</option>
-          </select>
           <button type="button" class="action-btn" (click)="newGame()">🔄 Nouvelle partie</button>
         </div>
       </header>
 
       <main class="game-main">
+        <section class="ai-setup" aria-label="Réglages de la partie">
+          <label class="setup-field">
+            <span>Joueurs</span>
+            <select class="difficulty-select" [value]="playerCount()" (change)="setPlayerCount($event)" aria-label="Nombre de joueurs">
+              <option value="2">2 joueurs</option>
+              <option value="3">3 joueurs</option>
+              <option value="4">4 joueurs</option>
+            </select>
+          </label>
+          <label class="setup-field">
+            <span>Même algorithme pour tous</span>
+            <select class="difficulty-select" (change)="setAllDifficulty($event)" aria-label="Même algorithme pour tous les IA">
+              <option value="">Choisir…</option>
+              @for (level of levels; track level.value) {
+                <option [value]="level.value">{{ level.label }}</option>
+              }
+            </select>
+          </label>
+          @for (color of aiSeats(); track color) {
+            <label class="setup-field">
+              <span><span class="seat-dot" [style.background]="colorHex[color]" aria-hidden="true"></span>IA {{ colorName[color] }}</span>
+              <select
+                class="difficulty-select"
+                [value]="difficulties()[color]"
+                (change)="setSeatDifficulty(color, $event)"
+                [attr.aria-label]="'Algorithme IA ' + colorName[color]"
+              >
+                @for (level of levels; track level.value) {
+                  <option [value]="level.value">{{ level.label }}</option>
+                }
+              </select>
+            </label>
+          }
+        </section>
+
         <section class="board-section" aria-label="Plateau de jeu">
           <div style="display:flex; flex-direction:column; gap:1rem; align-items:center; width:100%;">
              <div style="display:flex; justify-content:space-between; width:100%; align-items:center; padding: 0 1rem;">
@@ -306,6 +333,34 @@ import {
       color: #111827;
     }
 
+    .ai-setup {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      align-items: flex-end;
+      justify-content: center;
+      width: 100%;
+      padding: 0.5rem 1rem;
+    }
+    .setup-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .seat-dot {
+      display: inline-block;
+      width: 0.8em;
+      height: 0.8em;
+      margin-right: 0.35em;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      vertical-align: -0.1em;
+    }
+    .ai-setup .difficulty-select { padding: 0.375rem 0.5rem; max-width: 100%; }
+
     .action-btn {
       padding: 0.5rem 1rem;
       background: #4f46e5;
@@ -521,7 +576,26 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
     this.currentPlayer() === this.playerColor() ? this.ludoEngine.movableOptions().map(o => o.piece) : []
   );
 
-  readonly difficulty = signal<AIDifficulty>('medium');
+  readonly levels: { value: AIDifficulty; label: string }[] = [
+    { value: 'easy', label: 'Facile (au hasard, capture si possible)' },
+    { value: 'medium', label: 'Moyen (anticipe 3 coups)' },
+    { value: 'hard', label: 'Difficile (anticipe 5 coups)' },
+    { value: 'expert', label: 'Expert (anticipe 7 coups)' },
+    { value: 'master', label: 'Maître (simulations Monte-Carlo)' },
+  ];
+  readonly colorName: Record<string, string> = { red: 'Rouge', green: 'Vert', yellow: 'Jaune', blue: 'Bleu' };
+  readonly colorHex: Record<string, string> = { red: '#ef4444', green: '#22c55e', yellow: '#eab308', blue: '#3b82f6' };
+
+  /** Each color keeps its own algorithm, so settings survive a change of player count or color. */
+  readonly difficulties = signal<Record<string, AIDifficulty>>({ red: 'medium', green: 'medium', yellow: 'medium', blue: 'medium' });
+  readonly playerCount = signal(4);
+  /** Turn order, clockwise, human first; two players sit opposite each other. */
+  readonly seats = computed<PlayerColor[]>(() => {
+    const start = this.colors.indexOf(this.playerColor());
+    const ring = [...this.colors.slice(start), ...this.colors.slice(0, start)];
+    return this.playerCount() === 2 ? [ring[0], ring[2]] : ring.slice(0, this.playerCount());
+  });
+  readonly aiSeats = computed(() => this.seats().slice(1));
   readonly isAiThinking = signal(false);
   readonly showModal = signal(true);
   readonly playerColor = signal<PlayerColor>('red');
@@ -568,14 +642,26 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
     this.isAiThinking.set(false);
     this.showModal.set(true);
 
-    // Human plus three AI seats, in clockwise order starting with the human.
-    const start = this.colors.indexOf(this.playerColor());
-    this.ludoEngine.startNewGame([...this.colors.slice(start), ...this.colors.slice(0, start)]);
+    this.ludoEngine.startNewGame(this.seats());
   }
 
-  setDifficulty(event: Event): void {
-    const target = event.target as HTMLSelectElement;
-    this.difficulty.set(target.value as AIDifficulty);
+  setPlayerCount(event: Event): void {
+    this.playerCount.set(Number((event.target as HTMLSelectElement).value));
+    this.newGame();
+  }
+
+  setSeatDifficulty(color: string, event: Event): void {
+    const level = (event.target as HTMLSelectElement).value as AIDifficulty;
+    this.difficulties.update(d => ({ ...d, [color]: level }));
+  }
+
+  /** Same algorithm for every AI seat; the selector snaps back to its placeholder. */
+  setAllDifficulty(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const level = select.value as AIDifficulty;
+    if (!level) return;
+    this.difficulties.set({ red: level, green: level, yellow: level, blue: level });
+    select.value = '';
   }
 
   setPlayerColor(color: PlayerColor): void {
@@ -612,19 +698,13 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
   private playAiMove(): void {
     this.isAiThinking.set(true);
     this.aiTimeoutId = setTimeout(() => {
-      const options = this.ludoEngine.movableOptions();
-      const furthest = () => options.reduce((a, b) => (b.steps > a.steps ? b : a), options[0]);
-      const capture = options.find(o => o.capturedPieceIds.length > 0);
-      // easy: random; medium: capture, else furthest piece; hard: capture, else leave the base, else furthest
-      // shortcut: one-ply heuristics, no lookahead - upgrade if AI quality matters
-      const best =
-        this.difficulty() === 'easy'
-          ? options[Math.floor(Math.random() * options.length)]
-          : capture ??
-            (this.difficulty() === 'hard' ? options.find(o => o.piece.trackIndex === undefined) : undefined) ??
-            furthest();
-      if (best) {
-        this.ludoEngine.moveTo(best.piece, best.destination);
+      const state = this.ludoEngine.gameState();
+      const color = this.currentPlayer();
+      const roll = this.diceRoll();
+      const id = state && roll ? ludoAiMove(state, color, roll, this.difficulties()[color] ?? 'medium') : null;
+      const option = this.ludoEngine.movableOptions().find(o => o.piece.id === id);
+      if (option) {
+        this.ludoEngine.moveTo(option.piece, option.destination);
       }
       this.isAiThinking.set(false);
     }, 1000);

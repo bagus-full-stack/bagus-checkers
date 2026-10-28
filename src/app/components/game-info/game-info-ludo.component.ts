@@ -39,6 +39,11 @@ import { CommonModule } from '@angular/common';
       padding: 0.75rem;
     }
 
+    @keyframes swatch-blink { 50% { opacity: 0.25; transform: scale(1.25); } }
+    @media (prefers-reduced-motion: no-preference) {
+      .swatch { animation: swatch-blink 1s ease-in-out infinite; }
+    }
+
     .swatch {
       display: inline-block;
       width: 0.9em;
