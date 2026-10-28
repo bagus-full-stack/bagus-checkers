@@ -4,9 +4,13 @@ import {
   input,
   output,
   computed,
+  ElementRef,
+  afterRenderEffect,
+  inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Position, Piece, Move } from '../../core/models';
+import { LUDO_TOTAL_STEPS, ludoPositionForSteps } from '../../core/models/ludo.model';
 import { PieceComponent } from '../piece/piece.component';
 
 /** Last track cell before each color's home column, with the arrow shown there. */
@@ -27,6 +31,15 @@ const LUDO_START_CELLS: Record<string, string> = {
 
 /** Star squares (safe, white): LUDO_STAR_OFFSET steps after each entry square. */
 const LUDO_STAR_CELLS = new Set(['3,6', '6,11', '11,8', '8,3']);
+
+const HOP_MS = 150; // one square
+const COLOR_HEX: Record<string, string> = { red: '#ef4444', green: '#22c55e', yellow: '#eab308', blue: '#3b82f6' };
+
+interface Seen {
+  pos: Position;
+  step?: number; // steps since leaving the yard; undefined = in the yard
+  color: string;
+}
 
 @Component({
   selector: 'app-ludo-board',
@@ -238,8 +251,103 @@ export class LudoBoardComponent {
   /** Color whose yard corner holds the projected dice. */
   diceCorner = input<string | undefined>();
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private seen = new Map<string, Seen>();
+
+  constructor() {
+    afterRenderEffect(() => this.animateChanges(this.board()));
+  }
+
   squareClicked = output<Position>();
   pieceClicked = output<Piece>();
+
+  /**
+   * Compares the board with the previous one and plays, per piece: a hop square by square (with a
+   * ring where it leaves the yard), a spin-and-fly back to the yard when captured (with a burst on
+   * the square), and sparkles when it reaches home. Skipped for reduced motion and first render.
+   */
+  private animateChanges(grid: (Piece | null)[][]): void {
+    const now = new Map<string, Seen>();
+    grid.forEach((line, row) =>
+      line.forEach((p, col) => p && now.set(p.id, { pos: { row, col }, step: p.trackIndex, color: p.color })),
+    );
+    const before = this.seen;
+    this.seen = now;
+
+    const root = this.host.nativeElement;
+    const cells = root.querySelectorAll<HTMLElement>('.ludo-grid > .ludo-cell');
+    if (!before.size || cells.length < 225 || typeof cells[0].animate !== 'function') return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const { width, height } = cells[0].getBoundingClientRect();
+    if (!width) return;
+
+    const cellOf = (p: Position) => cells[p.row * 15 + p.col];
+    let landed = 0; // when the last mover arrives: captures and sparkles wait for it
+    const captured: [Seen, Seen][] = [];
+
+    for (const [id, cur] of now) {
+      const old = before.get(id);
+      if (!old || (old.pos.row === cur.pos.row && old.pos.col === cur.pos.col)) continue;
+      if (cur.step === undefined) { captured.push([old, cur]); continue; }
+
+      const el = cellOf(cur.pos).querySelector<HTMLElement>('.ludo-piece-slot');
+      if (!el) continue;
+      const at = (p: Position, extra = '') =>
+        `translate(${(p.col - cur.pos.col) * width}px, ${(p.row - cur.pos.row) * height}px)${extra}`;
+
+      // squares crossed, from where it was to where it is
+      const path: Position[] =
+        old.step !== undefined && cur.step > old.step && cur.step - old.step <= 6
+          ? Array.from({ length: cur.step - old.step }, (_, i) => ludoPositionForSteps(cur.color as never, old.step! + 1 + i))
+          : [cur.pos];
+      const frames: Keyframe[] = [{ transform: at(old.pos), zIndex: '20' }];
+      for (const p of path) {
+        frames.push({ transform: at(p, ' scale(1.3)'), zIndex: '20' }, { transform: at(p), zIndex: '20' });
+      }
+      const duration = path.length * HOP_MS;
+      landed = Math.max(landed, duration);
+      el.animate(frames, { duration, easing: 'ease-in-out' });
+
+      if (old.step === undefined) this.burst(cellOf(cur.pos), '', COLOR_HEX[cur.color], 0, duration); // leaves the yard
+      if (cur.step === LUDO_TOTAL_STEPS) {
+        this.burst(cellOf(cur.pos), '✨', '#f59e0b', duration, 900);
+        el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.5)' }, { transform: 'scale(1)' }], { duration: 500, delay: duration });
+      }
+    }
+
+    for (const [old, cur] of captured) {
+      const el = cellOf(cur.pos).querySelector<HTMLElement>('.ludo-piece-slot');
+      if (!el) continue;
+      const from = `translate(${(old.pos.col - cur.pos.col) * width}px, ${(old.pos.row - cur.pos.row) * height}px)`;
+      el.animate(
+        [
+          { transform: `${from} scale(1)`, opacity: 1, zIndex: '20' },
+          { transform: `${from} scale(0.2) rotate(360deg)`, opacity: 0.3, zIndex: '20', offset: 0.3 },
+          { transform: `${from} scale(0.2) rotate(360deg)`, opacity: 0.3, zIndex: '20', offset: 0.4 },
+          { transform: 'none', opacity: 1, zIndex: '20' },
+        ],
+        { duration: 800, delay: landed, easing: 'ease-in-out', fill: 'backwards' },
+      );
+      this.burst(cellOf(old.pos), '💥', '#ef4444', landed, 600);
+    }
+  }
+
+  /** A ring (and an optional symbol) that grows and fades on one square. */
+  private burst(cell: HTMLElement, symbol: string, color: string, delay: number, duration: number): void {
+    const fx = document.createElement('div');
+    fx.textContent = symbol;
+    fx.style.cssText = `position:absolute;inset:-25%;border-radius:50%;border:3px solid ${color};display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:25;font-size:clamp(14px,4cqw,32px)`;
+    cell.appendChild(fx);
+    const run = fx.animate(
+      [
+        { transform: 'scale(0.2)', opacity: 0 },
+        { transform: 'scale(0.8)', opacity: 1, offset: 0.25 },
+        { transform: 'scale(1.8)', opacity: 0 },
+      ],
+      { duration: Math.max(duration, 400), delay, easing: 'ease-out', fill: 'both' },
+    );
+    run.onfinish = () => fx.remove();
+  }
 
   getPieceAt(row: number, col: number): Piece | null {
     const grid = this.board();
