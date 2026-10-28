@@ -46,22 +46,20 @@ import {
           <div style="display:flex; flex-direction:column; gap:1rem; align-items:center; width:100%;">
             <div style="display:flex; justify-content:space-between; width:100%; align-items:center; padding: 0 1rem;">
              <app-game-info-ludo />
-             <div style="display:flex; align-items:center; gap:1rem;">
-                <span class="roll-hint">Lancer le dé =&gt;</span>
-                <app-dice
-                  [value]="diceRoll()"
-                  [isRolling]="isRolling()"
-                  [disabled]="phase() !== 'rolling'"
-                  (roll)="onRollDice()"
-                />
-             </div>
             </div>
              <app-ludo-board
                 [board]="board()"
                 [selectedPiece]="undefined"
                 [movablePieces]="movablePieces()"
                 (pieceClicked)="onPieceClicked($event)"
-              />
+                [diceCorner]="currentPlayer()">
+                <app-dice
+                  [value]="diceRoll()"
+                  [isRolling]="isRolling()"
+                  [disabled]="phase() !== 'rolling'"
+                  (roll)="onRollDice()"
+                />
+              </app-ludo-board>
           </div>
         </section>
       </main>
@@ -371,9 +369,7 @@ import {
       .game-title { font-size: 1rem; text-align: center; }
       .action-btn { padding: 0.375rem 0.5rem; font-size: 0.75rem; white-space: nowrap; }
       .game-main { padding: 0; gap: 0.5rem; }
-      .roll-hint { font-size: 0.8rem; }
     }
-    .roll-hint { font-weight: bold; color: var(--text-primary); white-space: nowrap; }
 
   `,
 })

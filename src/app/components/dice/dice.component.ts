@@ -41,8 +41,8 @@ import { Component, ChangeDetectionStrategy, input, output } from '@angular/core
       white-space: nowrap;
     }
     .dice {
-      width: 60px;
-      height: 60px;
+      width: var(--dice-size, 60px);
+      height: var(--dice-size, 60px);
       padding: 0;
       border-radius: 12px;
       background: var(--bg-secondary);
@@ -73,20 +73,22 @@ import { Component, ChangeDetectionStrategy, input, output } from '@angular/core
       width: 100%;
       height: 100%;
       display: grid;
-      padding: 8px;
+      padding: 13%;
     }
 
     .dice-face[data-value="1"] { grid-template: "c" 1fr / 1fr; place-items: center; }
-    .dice-face[data-value="2"] { grid-template: "a ." 1fr ". b" 1fr / 1fr 1fr; padding: 12px;}
-    .dice-face[data-value="3"] { grid-template: "a . ." 1fr ". b ." 1fr ". . c" 1fr / 1fr 1fr 1fr; padding: 10px;}
-    .dice-face[data-value="4"] { grid-template: "a b" 1fr "c d" 1fr / 1fr 1fr; padding: 12px;}
-    .dice-face[data-value="5"] { grid-template: "a . b" 1fr ". c ." 1fr "d . e" 1fr / 1fr 1fr 1fr; padding: 10px;}
-    .dice-face[data-value="6"] { grid-template: "a b" 1fr "c d" 1fr "e f" 1fr / 1fr 1fr; padding: 10px;}
+    .dice-face[data-value="2"] { grid-template: "a ." 1fr ". b" 1fr / 1fr 1fr; padding: 20%;}
+    .dice-face[data-value="3"] { grid-template: "a . ." 1fr ". b ." 1fr ". . c" 1fr / 1fr 1fr 1fr; padding: 17%;}
+    .dice-face[data-value="4"] { grid-template: "a b" 1fr "c d" 1fr / 1fr 1fr; padding: 20%;}
+    .dice-face[data-value="5"] { grid-template: "a . b" 1fr ". c ." 1fr "d . e" 1fr / 1fr 1fr 1fr; padding: 17%;}
+    .dice-face[data-value="6"] { grid-template: "a b" 1fr "c d" 1fr "e f" 1fr / 1fr 1fr; padding: 17%;}
+
+    .dice-face > span:not(.dot) { font-size: calc(var(--dice-size, 60px) * 0.5); line-height: 1; place-self: center; }
 
     .dot {
       display: block;
-      width: 10px;
-      height: 10px;
+      width: calc(var(--dice-size, 60px) * 0.17);
+      height: calc(var(--dice-size, 60px) * 0.17);
       border-radius: 50%;
       background: var(--text-primary);
       justify-self: center;

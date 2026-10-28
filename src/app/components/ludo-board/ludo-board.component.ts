@@ -59,6 +59,8 @@ const LUDO_STAR_CELLS = new Set(['3,6', '6,11', '11,8', '8,3']);
           }
         }
         <div class="ludo-center" aria-hidden="true"></div>
+        <!-- Projected dice, parked in the yard corner of the player whose turn it is -->
+        <div class="dice-slot" [attr.data-corner]="diceCorner()" [hidden]="!diceCorner()"><ng-content /></div>
       </div>
     </div>
   `,
@@ -68,7 +70,18 @@ const LUDO_STAR_CELLS = new Set(['3,6', '6,11', '11,8', '8,3']);
       width: 100%;
     }
 
+    .dice-slot {
+      position: absolute;
+      z-index: 10;
+      --dice-size: clamp(28px, 11cqw, 60px);
+    }
+    .dice-slot[data-corner='red'] { left: 1%; top: 1%; }
+    .dice-slot[data-corner='green'] { right: 1%; top: 1%; }
+    .dice-slot[data-corner='yellow'] { right: 1%; bottom: 1%; }
+    .dice-slot[data-corner='blue'] { left: 1%; bottom: 1%; }
+
     .ludo-board-container {
+      container-type: inline-size;
       width: 100%;
       height: auto;
       max-width: min(90vw, 800px);
@@ -211,6 +224,8 @@ export class LudoBoardComponent {
   selectedPiece = input<Piece | undefined>();
   validMoves = input<Move[]>([]);
   movablePieces = input<Piece[]>([]);
+  /** Color whose yard corner holds the projected dice. */
+  diceCorner = input<string | undefined>();
 
   squareClicked = output<Position>();
   pieceClicked = output<Piece>();

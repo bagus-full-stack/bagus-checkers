@@ -216,13 +216,11 @@ test.describe('Responsive layout', () => {
           const g = document.querySelector('.ludo-grid')!.getBoundingClientRect();
           const cellEl = document.querySelector('.ludo-cell')!.getBoundingClientRect();
           const h1 = document.querySelector('h1')!;
-          const hint = document.querySelector('.roll-hint')!.getBoundingClientRect();
           const lh = parseFloat(getComputedStyle(h1).lineHeight) || parseFloat(getComputedStyle(h1).fontSize) * 1.2;
           return {
             overflowX: document.documentElement.scrollWidth > window.innerWidth,
             left: g.left, right: g.right, w: g.width, h: g.height, cell: cellEl.width,
             titleLines: Math.round(h1.getBoundingClientRect().height / lh),
-            hintLines: Math.round(hint.height / (parseFloat(getComputedStyle(document.querySelector('.roll-hint')!).fontSize) * 1.3)),
           };
         });
         console.log(`LAYOUT ${label} ${url}`, JSON.stringify(m));
@@ -233,7 +231,6 @@ test.describe('Responsive layout', () => {
         // WCAG 2.5.8: 24 CSS px targets. 15 cells x 24px = 360px, so a 360px-wide phone cannot reach it.
         expect.soft(m.cell, 'cell size (tap target)').toBeGreaterThanOrEqual(w >= 390 ? 24 : 22);
         expect(m.titleLines, 'title wraps on too many lines').toBeLessThanOrEqual(2);
-        expect(m.hintLines, '"Lancer le dé" label wraps').toBe(1);
         await page.screenshot({ path: `test-results/visual-${label.replace(/\s/g, '_')}-${url.split('/')[2].split('?')[0]}.png` });
       });
     }
@@ -355,4 +352,44 @@ test.describe('Touch devices (emulated phones)', () => {
       await ctx.close();
     });
   }
+});
+
+test.describe('Dice sits in the yard corner of the player to move', () => {
+  test('follows the turn and stays inside the board without covering tokens', async ({ page }) => {
+    await openLocal(page);
+    await page.clock.install();
+    const corner = { red: 'tl', green: 'tr', yellow: 'br', blue: 'bl' } as const;
+    const seen = new Set<string>();
+    for (let i = 0; i < 200 && seen.size < 4; i++) {
+      const name = (await page.locator('.player-name').textContent())!.trim();
+      const color = { Rouge: 'red', Vert: 'green', Jaune: 'yellow', Bleu: 'blue' }[name] as keyof typeof corner;
+      if (!seen.has(color)) {
+        seen.add(color);
+        const m = await page.evaluate(() => {
+          const g = document.querySelector('.ludo-grid')!.getBoundingClientRect();
+          const d = document.querySelector('.dice')!.getBoundingClientRect();
+          const pieces = [...document.querySelectorAll('app-piece')].map((p) => p.getBoundingClientRect());
+          const overlap = pieces.some((p) => d.left < p.right && d.right > p.left && d.top < p.bottom && d.bottom > p.top);
+          return {
+            h: (d.left + d.width / 2 - g.left) / g.width < 0.5 ? 'l' : 'r',
+            v: (d.top + d.height / 2 - g.top) / g.height < 0.5 ? 't' : 'b',
+            inside: d.left >= g.left && d.right <= g.right && d.top >= g.top && d.bottom <= g.bottom,
+            overlap,
+            size: d.width,
+          };
+        });
+        expect.soft(m.v + m.h, `${color} corner`).toBe(corner[color]);
+        expect.soft(m.inside, `${color} inside board`).toBe(true);
+        expect.soft(m.overlap, `${color} covers a token`).toBe(false);
+        expect.soft(m.size, `${color} dice size`).toBeGreaterThanOrEqual(28);
+      }
+      const dice = page.locator('.dice');
+      if (await dice.isEnabled()) await dice.click();
+      await page.clock.runFor(700);
+      const mov = page.locator('app-piece.movable');
+      if (await mov.count()) await mov.first().click();
+      await page.clock.runFor(1200);
+    }
+    expect([...seen].sort()).toEqual(['blue', 'green', 'red', 'yellow']);
+  });
 });

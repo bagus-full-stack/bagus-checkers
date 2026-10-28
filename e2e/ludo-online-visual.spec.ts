@@ -85,13 +85,11 @@ test.describe('Online Ludo game page', () => {
       const m = await g.host.evaluate(() => {
         const grid = document.querySelector('.ludo-grid')!.getBoundingClientRect();
         const h1 = document.querySelector('h1');
-        const hint = document.querySelector('.roll-hint')!;
         const line = (e: Element) => parseFloat(getComputedStyle(e).fontSize) * 1.4;
         return {
           overflowX: document.documentElement.scrollWidth > window.innerWidth,
           fits: grid.left >= 0 && grid.right <= window.innerWidth,
           cell: document.querySelector('.ludo-cell')!.getBoundingClientRect().width,
-          hintLines: Math.round(hint.getBoundingClientRect().height / line(hint)),
           titleLines: h1 ? Math.round(h1.getBoundingClientRect().height / line(h1)) : 1,
         };
       });
@@ -99,7 +97,6 @@ test.describe('Online Ludo game page', () => {
       expect(m.overflowX).toBe(false);
       expect(m.fits).toBe(true);
       expect(m.cell).toBeGreaterThanOrEqual(w >= 390 ? 24 : 22);
-      expect(m.hintLines).toBe(1);
       expect(m.titleLines).toBeLessThanOrEqual(2);
     });
   }
