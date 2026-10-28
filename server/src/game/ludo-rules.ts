@@ -77,7 +77,8 @@ const LUDO_HOME_PATH: Record<PlayerColor, Position[]> = {
 
 const LUDO_HOME_ENTRY_STEP = LUDO_TRACK_LENGTH; // 52
 const LUDO_TOTAL_STEPS = LUDO_HOME_ENTRY_STEP + LUDO_HOME_LENGTH; // 57
-const LUDO_SAFE_INDICES: ReadonlySet<number> = new Set(Object.values(LUDO_START_INDEX));
+// Entry squares plus a star square 8 steps after each one (same rule as the client model).
+const LUDO_SAFE_INDICES: ReadonlySet<number> = new Set(Object.values(LUDO_START_INDEX).flatMap((i) => [i, i + 8]));
 
 function ludoPositionForSteps(color: PlayerColor, steps: number): Position {
   if (steps >= LUDO_HOME_ENTRY_STEP) {

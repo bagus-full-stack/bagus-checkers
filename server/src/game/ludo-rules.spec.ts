@@ -51,6 +51,22 @@ function main(): void {
   const capturedGreen = afterCapture!.pieces.find((p) => p.color === 'green');
   assert(capturedGreen!.trackIndex === undefined, 'captured token should be sent back to base');
 
+  // Star square: 8 steps after an entry square is safe too - red lands on (3,6) with a green token there.
+  const greenId = afterExit!.pieces.find((p) => p.color === 'green')!.id;
+  const starState: LudoGameState = {
+    ...afterExit!,
+    lastDiceRoll: 1,
+    phase: 'moving',
+    pieces: afterExit!.pieces.map((p) =>
+      p.id === redPieceId ? { ...p, trackIndex: 7, position: { row: 4, col: 6 } }
+        : p.id === greenId ? { ...p, trackIndex: 47, position: { row: 3, col: 6 } }
+        : p
+    ),
+  };
+  const afterStar = applyLudoMove(starState, 'red', redPieceId);
+  assert(afterStar !== null, 'moving onto a star square should be legal');
+  assert(afterStar!.pieces.find((p) => p.id === greenId)!.trackIndex === 47, 'a token on a star square must not be captured');
+
   // Win condition: all 4 tokens at the final step.
   const totalSteps = 57;
   const winState: LudoGameState = {

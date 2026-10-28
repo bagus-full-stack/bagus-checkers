@@ -103,6 +103,10 @@ describe('LudoBoardComponent', () => {
       [0, 8, 'track start-green safe'],
       [8, 14, 'track start-yellow safe'],
       [14, 6, 'track start-blue safe'],
+      [3, 6, 'track star safe'],
+      [6, 11, 'track star safe'],
+      [11, 8, 'track star safe'],
+      [8, 3, 'track star safe'],
       [0, 7, 'track arrow arrow-green'], // shared track cell above the board, just before green's home column
       [0, 6, 'track'],
     ])('classifies (%i,%i) as %s', (row, col, expected) => {

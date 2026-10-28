@@ -9,7 +9,6 @@ import { CommonModule } from '@angular/common';
 import { Position, Piece, Move } from '../../core/models';
 import { PieceComponent } from '../piece/piece.component';
 
-/** Entry square of each color (the only safe squares), keyed "row,col". */
 /** Last track cell before each color's home column, with the arrow shown there. */
 const LUDO_ARROW_CELLS: Record<string, string> = {
   '7,0': 'red',
@@ -18,12 +17,16 @@ const LUDO_ARROW_CELLS: Record<string, string> = {
   '14,7': 'blue',
 };
 
+/** Entry square of each color (safe), keyed "row,col". */
 const LUDO_START_CELLS: Record<string, string> = {
   '6,0': 'red',
   '0,8': 'green',
   '8,14': 'yellow',
   '14,6': 'blue',
 };
+
+/** Star squares (safe, white): LUDO_STAR_OFFSET steps after each entry square. */
+const LUDO_STAR_CELLS = new Set(['3,6', '6,11', '11,8', '8,3']);
 
 @Component({
   selector: 'app-ludo-board',
@@ -146,7 +149,7 @@ const LUDO_START_CELLS: Record<string, string> = {
     .home-yellow { background: #eab308; }
     .home-blue { background: #3b82f6; }
 
-    /* Start squares: the only safe squares, drawn in the owner's color with a star */
+    /* Start squares: safe, drawn in the owner's color with a star */
     .ludo-cell.start-red { background: #ef4444; }
     .ludo-cell.start-green { background: #22c55e; }
     .ludo-cell.start-yellow { background: #eab308; }
@@ -159,6 +162,12 @@ const LUDO_START_CELLS: Record<string, string> = {
       font-size: clamp(10px, 2.4vw, 22px);
       line-height: 1;
       pointer-events: none;
+    }
+
+    /* Star squares: safe too, but plain track squares with a dark star */
+    .ludo-cell.star::after {
+      color: #374151;
+      text-shadow: none;
     }
 
     /* Center: the 3x3 block is home, drawn as four triangles (one per color) by an overlay */
@@ -252,6 +261,7 @@ export class LudoBoardComponent {
       classes.push('track');
       const start = LUDO_START_CELLS[`${row},${col}`];
       if (start) classes.push(`start-${start}`, 'safe');
+      else if (LUDO_STAR_CELLS.has(`${row},${col}`)) classes.push('star', 'safe');
       const arrow = LUDO_ARROW_CELLS[`${row},${col}`];
       if (arrow) classes.push('arrow', `arrow-${arrow}`);
     }

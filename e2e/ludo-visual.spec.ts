@@ -6,7 +6,7 @@ const rgb = (hex: string) => {
   return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`;
 };
 
-/** Reference Ludo layout (15x15, 52-cell circuit, 4 yards, 4 home columns, 4 safe start squares). */
+/** Reference Ludo layout (15x15, 52-cell circuit, 4 yards, 4 home columns, 8 safe squares (4 starts + 4 stars)). */
 const YARDS = { red: [0, 0], green: [0, 9], blue: [9, 0], yellow: [9, 9] } as const;
 const HOME = {
   red: [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5]],
@@ -84,8 +84,13 @@ test.describe('Board matches the standard Ludo layout', () => {
     }
   });
 
-  test('colored start squares with a star, only 4, at the standard cells', async ({ page }) => {
-    expect(await page.locator('.ludo-cell.safe').count()).toBe(4);
+  test('colored start squares with a star, 4 entries + 4 stars, at the standard cells', async ({ page }) => {
+    expect(await page.locator('.ludo-cell.safe').count()).toBe(8);
+    for (const [r, c] of [[3, 6], [6, 11], [11, 8], [8, 3]]) {
+      await expect(cell(page, r, c)).toHaveClass(/(^| )star( |$)/);
+      expect(await bg(page, r, c)).toBe(await bg(page, 6, 3)); // same plain track color as any other track cell
+      expect(await cell(page, r, c).evaluate((e) => getComputedStyle(e, '::after').content)).toContain('★');
+    }
     for (const [color, [r, c]] of Object.entries(STARTS)) {
       await expect(cell(page, r, c)).toHaveClass(new RegExp(`start-${color}`));
       expect(await bg(page, r, c)).toBe(rgb(MAIN[color as keyof typeof MAIN]));

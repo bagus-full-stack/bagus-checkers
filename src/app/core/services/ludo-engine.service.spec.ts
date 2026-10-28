@@ -193,6 +193,27 @@ describe('LudoEngineService', () => {
       expect(green.trackIndex).toBe(0); // untouched, still on the track
     });
 
+    it('does not capture an opponent on a star square (8 steps after an entry square)', () => {
+      const redPiece = onTrack('red-0', 'red', 6);
+      const starPos = ludoPositionForSteps('red', 8); // global index 8 = the star square
+      const greenPiece = { ...onTrack('green-0', 'green', 20), position: starPos };
+
+      service.syncState({
+        pieces: [redPiece, greenPiece],
+        currentPlayer: 'red',
+        status: 'playing',
+        moveHistory: [],
+        phase: 'rolling',
+        consecutiveSixes: 0,
+        players: ['red', 'green'],
+      });
+      mockRandomForRoll(2);
+      service.rollDice();
+      service.moveTo(redPiece, starPos);
+
+      expect(service.gameState()!.pieces.find((p) => p.id === 'green-0')!.trackIndex).toBe(20);
+    });
+
     it('finishing all of a color pieces wins the game', () => {
       const finished = (n: number) => onTrack(`red-${n}`, 'red', LUDO_TOTAL_STEPS);
       const lastPiece = onTrack('red-3', 'red', LUDO_TOTAL_STEPS - 1);

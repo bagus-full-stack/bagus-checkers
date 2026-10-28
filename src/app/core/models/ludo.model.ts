@@ -90,8 +90,13 @@ export const LUDO_HOME_ENTRY_STEP = LUDO_TRACK_LENGTH; // 52 - a token uses all 
 /** Total steps (0-based target) for a token to go from base-exit to finished. */
 export const LUDO_TOTAL_STEPS = LUDO_HOME_ENTRY_STEP + LUDO_HOME_LENGTH; // 57
 
-/** Global track squares where a token can't be captured (each color's own entry square). */
-export const LUDO_SAFE_INDICES: ReadonlySet<number> = new Set(Object.values(LUDO_START_INDEX));
+/** Each color's star square sits this many steps after its entry square. */
+export const LUDO_STAR_OFFSET = 8;
+
+/** Global track squares where a token can't be captured: the 4 entry squares and the 4 star squares. */
+export const LUDO_SAFE_INDICES: ReadonlySet<number> = new Set(
+  Object.values(LUDO_START_INDEX).flatMap((i) => [i, i + LUDO_STAR_OFFSET]),
+);
 
 /** Board position for a token that has taken `steps` steps since leaving base. */
 export function ludoPositionForSteps(color: PlayerColor, steps: number): Position {

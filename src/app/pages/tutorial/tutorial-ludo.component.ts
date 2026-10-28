@@ -89,7 +89,7 @@ import { RouterLink } from '@angular/router';
               <div class="info-card success">
                 <h3>★ Cases protégées</h3>
                 <ul>
-                  <li>Les <strong>4 cases de départ</strong> (étoile) sont protégées : on n'y capture jamais</li>
+                  <li>Les <strong>4 cases de départ</strong> et les <strong>4 cases étoilées</strong> (8 cases après chaque départ) sont protégées : on n'y capture jamais</li>
                   <li>Votre colonne d'arrivée est privée : aucun adversaire ne peut y entrer</li>
                   <li>Vos propres pions peuvent partager une case</li>
                 </ul>

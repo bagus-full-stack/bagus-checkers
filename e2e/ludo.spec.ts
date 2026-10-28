@@ -1,7 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
 
 // Safe squares (each color's entry) on the 15x15 grid, as row*15+col: only place different colors may share a cell.
-const SAFE = new Set([6 * 15 + 0, 0 * 15 + 8, 8 * 15 + 14, 14 * 15 + 6]);
+const SAFE = new Set([6 * 15 + 0, 0 * 15 + 8, 8 * 15 + 14, 14 * 15 + 6, 3 * 15 + 6, 6 * 15 + 11, 11 * 15 + 8, 8 * 15 + 3]);
 
 /**
  * One whole turn step inside the page (1 round trip): roll if possible, play a random movable

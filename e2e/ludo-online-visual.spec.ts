@@ -53,7 +53,7 @@ test.describe('Online Ludo game page', () => {
       };
     });
     expect(info).toEqual({
-      cells: 225, track: 52, safe: 4, center: 9,
+      cells: 225, track: 52, safe: 8, center: 9,
       yards: [36, 36, 36, 36], home: [5, 5, 5, 5], spots: 16,
       square: true, centerGradient: true, role: 'Plateau de Ludo',
     });
