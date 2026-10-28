@@ -23,7 +23,7 @@ async function startOnlineGame(browser: Browser) {
   await card.getByRole('button', { name: 'Rejoindre' }).click();
 
   for (const p of [host, guest]) {
-    await p.getByLabel('Je suis prêt').check();
+    await p.getByLabel('Je suis prêt').click();
   }
   await expect(host.locator('.ludo-cell')).toHaveCount(225, { timeout: 15000 });
   return { host, guest, close: async () => { await hostCtx.close(); await guestCtx.close(); } };
