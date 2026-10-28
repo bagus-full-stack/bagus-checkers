@@ -1,12 +1,13 @@
 # Angular Checkers Master 🎮
 
-Jeu de dames en ligne développé avec Angular 21+ et NestJS.
+Jeu de dames en ligne développé avec Angular 22 et NestJS. Deux jeux : les dames (3 variantes) et le Ludo.
 
 ## 🚀 Fonctionnalités
 
 ### Modes de jeu
 - **Joueur vs Joueur (Local)** - Deux joueurs sur le même écran
-- **Joueur vs IA** - 3 niveaux de difficulté (Facile, Moyen, Difficile)
+- **Joueur vs IA** - 5 niveaux (Facile, Moyen, Difficile, Expert, Maître). Au Ludo : 2 à 4 joueurs, un algorithme réglable par IA
+- **Ludo** - local, contre l'IA et en ligne (2 à 4 joueurs, 30 s par tour, 2 oublis de suite = exclu)
 - **Multijoueur en ligne** - Affrontez des joueurs via WebSocket
 
 ### Règles supportées
@@ -94,10 +95,14 @@ L'IA utilise plusieurs algorithmes selon le niveau de difficulté :
 - **Facile** - Coups aléatoires
 - **Moyen** - Algorithme Minimax (profondeur 3)
 - **Difficile** - Alpha-Beta Pruning (profondeur 5)
+- **Expert** - Alpha-Beta Pruning (profondeur 7)
+- **Maître** - Monte-Carlo (MCTS aux dames, simulations au Ludo)
+
+Au Ludo, le dé impose une recherche expectimax (moyenne sur les 6 faces). Les niveaux Difficile, Expert et Maître tournent dans un Web Worker pour ne pas figer la page.
 
 ## 🎨 Technologies
 
-- **Frontend:** Angular 21+, Signals, Standalone Components
+- **Frontend:** Angular 22, Signals, Standalone Components
 - **Styling:** Tailwind CSS
 - **Drag & Drop:** Angular CDK
 - **Backend:** NestJS

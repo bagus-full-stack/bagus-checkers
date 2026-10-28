@@ -74,7 +74,7 @@ describe('GameAiLudoComponent', () => {
     expect(ludoEngine.currentPlayer()).toBe('yellow');
   });
 
-  it('automatically moves the AI piece out of its base after rolling a six', () => {
+  it('automatically moves the AI piece out of its base after rolling a six', async () => {
     const fixture = setup();
     mockRandomForRoll(3);
     fixture.componentInstance.onPlayerRollDice();
@@ -88,7 +88,7 @@ describe('GameAiLudoComponent', () => {
     expect(ludoEngine.phase()).toBe('moving');
     expect(fixture.componentInstance.isAiThinking()).toBe(true);
 
-    vi.advanceTimersByTime(1000);
+    await vi.advanceTimersByTimeAsync(1000); // the AI answers through a promise
     fixture.detectChanges();
 
     const greenLeftBase = ludoEngine

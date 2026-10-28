@@ -7,7 +7,7 @@ import {
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger, OnModuleDestroy, UseGuards } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomService } from './room.service';
@@ -16,6 +16,10 @@ import { OnlinePlayer, ChatMessage, GameRoom } from './types';
 import { getAllowedOrigins } from '../cors';
 import { WsThrottlerGuard } from './ws-throttler.guard';
 import { LudoGameState } from './ludo-rules';
+
+/** A Ludo player has this long per roll or move; two misses in a row drops them from the game. */
+export const LUDO_TURN_MS = 30_000;
+const LUDO_MAX_MISSES = 2;
 import {
   RoomCreateDto,
   RoomJoinDto,
@@ -35,7 +39,7 @@ import {
   },
 })
 @UseGuards(WsThrottlerGuard)
-export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy {
   private readonly logger = new Logger(GameGateway.name);
 
   @WebSocketServer()
@@ -43,6 +47,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private players = new Map<string, OnlinePlayer>(); // socketId -> player
   private socketToPlayer = new Map<string, string>(); // socketId -> playerId
+  private turnTimers = new Map<string, NodeJS.Timeout>(); // roomId -> pending Ludo turn timeout
+  private misses = new Map<string, Map<string, number>>(); // roomId -> color -> idle turns in a row
+  turnMs = LUDO_TURN_MS;
 
   constructor(
     private roomService: RoomService,
@@ -75,6 +82,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (state.status === 'finished') {
         this.server.to(room.id).emit('game:ended', { result: { winner: state.winner, reason: 'resignation' } });
       }
+      this.armTurnTimer(room.id);
     } else if (checkersGameAborted) {
       this.server.to(room.id).emit('game:ended', {
         result: { winner: leaverColor === 'white' ? 'black' : 'white', reason: 'resignation' },
@@ -240,6 +248,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           room: startedRoom,
           initialState,
         });
+        this.armTurnTimer(room.id);
 
         this.logger.log(`Game started in room ${room.id}`);
       }
@@ -254,15 +263,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const player = this.players.get(client.id);
     if (!player) return;
 
-    const room = this.roomService.getRoom(data.roomId);
+    const room = this.roomOf(player.id, data.roomId);
     if (!room || room.status !== 'playing') return;
 
-    // Determine player color
-    const playerColor =
-      room.hostPlayer.id === player.id
-        ? room.hostPlayer.color
-        : room.guestPlayer?.color;
-
+    const playerColor = room.players?.find((p) => p.id === player.id)?.color;
     if (!playerColor) return;
 
     // Apply move
@@ -323,8 +327,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const { state: newState } = this.gameService.rollLudoDice(currentState);
     this.roomService.updateGameState(room.id, newState);
+    this.misses.get(room.id)?.delete(playerColor);
 
     this.server.to(room.id).emit('game:ludo:update', { gameState: newState });
+    this.armTurnTimer(room.id);
   }
 
   @SubscribeMessage('game:ludo:move')
@@ -349,6 +355,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     this.roomService.updateGameState(room.id, newState);
+    this.misses.get(room.id)?.delete(playerColor);
     this.server.to(room.id).emit('game:ludo:update', { gameState: newState });
 
     if (newState.status === 'finished') {
@@ -359,6 +366,67 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       this.logger.log(`Ludo game ended in room ${room.id}, winner: ${newState.winner}`);
     }
+    this.armTurnTimer(room.id);
+  }
+
+  onModuleDestroy(): void {
+    this.turnTimers.forEach((t) => clearTimeout(t));
+    this.turnTimers.clear();
+  }
+
+  /** (Re)starts the idle clock for the Ludo player to act; clears it when the game is not running. */
+  private armTurnTimer(roomId: string): void {
+    clearTimeout(this.turnTimers.get(roomId));
+    this.turnTimers.delete(roomId);
+    const room = this.roomService.getRoom(roomId);
+    const state = room?.gameState as LudoGameState | undefined;
+    if (!room || room.variant !== 'ludo' || room.status !== 'playing' || state?.status !== 'playing') {
+      this.misses.delete(roomId);
+      return;
+    }
+    const timer = setTimeout(() => this.onTurnTimeout(roomId), this.turnMs);
+    timer.unref();
+    this.turnTimers.set(roomId, timer);
+  }
+
+  /** The player to act stayed idle: play for them once, drop them on the second miss in a row. */
+  private onTurnTimeout(roomId: string): void {
+    this.turnTimers.delete(roomId);
+    const room = this.roomService.getRoom(roomId);
+    let state = room?.gameState as LudoGameState | undefined;
+    if (!room || room.status !== 'playing' || state?.status !== 'playing') return;
+
+    const color = state.currentPlayer;
+    const streaks = this.misses.get(roomId) ?? new Map<string, number>();
+    this.misses.set(roomId, streaks);
+    const count = (streaks.get(color) ?? 0) + 1;
+    streaks.set(color, count);
+
+    if (count >= LUDO_MAX_MISSES) {
+      state = this.roomService.dropLudoPlayer(roomId, color) ?? state;
+      streaks.delete(color);
+      this.logger.log(`${color} dropped from room ${roomId} for being idle`);
+    } else {
+      if (state.phase === 'rolling') state = this.gameService.rollLudoDice(state).state as LudoGameState;
+      if (state.phase === 'moving') {
+        const mover = state;
+        for (const piece of mover.pieces.filter((p) => p.color === color)) {
+          const moved = this.gameService.applyLudoMove(mover, color, piece.id);
+          if (moved) {
+            state = moved as LudoGameState;
+            break;
+          }
+        }
+      }
+      this.roomService.updateGameState(roomId, state);
+    }
+
+    this.server.to(roomId).emit('game:ludo:update', { gameState: state });
+    if (state.status === 'finished') {
+      this.roomService.endGame(roomId);
+      this.server.to(roomId).emit('game:ended', { result: { winner: state.winner, reason: 'resignation' } });
+    }
+    this.armTurnTimer(roomId);
   }
 
   @SubscribeMessage('game:resign')
@@ -380,6 +448,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         if (state.status === 'finished') {
           this.server.to(room.id).emit('game:ended', { result: { winner: state.winner, reason: 'resignation' } });
         }
+        this.armTurnTimer(room.id);
       }
     } else {
       const myColor = room.hostPlayer.id === player.id ? room.hostPlayer.color : room.guestPlayer?.color;

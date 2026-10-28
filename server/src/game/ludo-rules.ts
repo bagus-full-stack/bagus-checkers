@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto';
 import { Piece, PlayerColor, Position } from './types';
 
 /**
@@ -200,7 +201,7 @@ export function removeLudoPlayer(state: LudoGameState, color: PlayerColor): Ludo
 
 /** Server rolls the die itself - the client never sends a roll value. */
 export function rollLudoDice(state: LudoGameState): { roll: number; state: LudoGameState } {
-  const roll = Math.floor(Math.random() * 6) + 1;
+  const roll = randomInt(1, 7);
   const options = getMoveOptions(state, state.currentPlayer, roll);
 
   if (options.length > 0) {

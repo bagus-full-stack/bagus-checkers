@@ -64,7 +64,7 @@ export class RoomCreateDto {
   isPrivate!: boolean;
 
   @IsOptional()
-  @IsString()
+  @IsIn(['international', 'english', 'brazilian', 'ludo'])
   variant?: string;
 
   @IsOptional()

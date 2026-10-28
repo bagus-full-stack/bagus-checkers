@@ -103,6 +103,31 @@ test.describe('Ludo local game', () => {
 });
 
 test.describe('Ludo vs AI', () => {
+  test('the heaviest AI level thinks in a worker and always hands the turn back', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/game/ai?variant=ludo');
+    await page.getByText(/Réglages/).click();
+    await page.getByLabel('Même algorithme pour tous les IA').selectOption('master');
+
+    // Real timers: the worker answers in real time. Roll for the human, let three AIs play, repeat.
+    let humanTurns = 0;
+    const deadline = Date.now() + 90_000;
+    while (humanTurns < 3 && Date.now() < deadline) {
+      const dice = page.locator('.dice');
+      if (await dice.isEnabled()) {
+        humanTurns++;
+        await dice.click();
+        await page.waitForTimeout(600);
+        const movable = page.locator('app-piece.movable');
+        if (await movable.count()) await movable.first().click().catch(() => undefined);
+      }
+      await page.waitForTimeout(400);
+    }
+    expect(humanTurns, 'the AI never gave the turn back').toBe(3);
+    expect(errors).toEqual([]);
+  });
+
   test('AI answers and the game reaches a winner', async ({ page }) => {
     await page.goto('/game/ai?variant=ludo');
     await expect(page.locator('app-piece')).toHaveCount(16);

@@ -11,7 +11,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { LudoEngineService } from '../../core/services';
-import { ludoAiMove } from '../../core/ai';
+import { ludoAiMoveAsync } from '../../core/ai';
 import { AIDifficulty, TimeMode, PlayerColor, Piece } from '../../core/models';
 import {
   LudoBoardComponent,
@@ -621,6 +621,7 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
   readonly playerColor = signal<PlayerColor>('red');
   readonly isRolling = signal(false);
 
+  private gameId = 0;
   private aiTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private colors: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
 
@@ -666,6 +667,7 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
     if (this.aiTimeoutId) {
       clearTimeout(this.aiTimeoutId);
     }
+    this.gameId++;
     this.isAiThinking.set(false);
     this.showModal.set(true);
 
@@ -724,11 +726,13 @@ export class GameAiLudoComponent implements OnInit, OnDestroy {
 
   private playAiMove(): void {
     this.isAiThinking.set(true);
-    this.aiTimeoutId = setTimeout(() => {
+    const game = this.gameId;
+    this.aiTimeoutId = setTimeout(async () => {
       const state = this.ludoEngine.gameState();
       const color = this.currentPlayer();
       const roll = this.diceRoll();
-      const id = state && roll ? ludoAiMove(state, color, roll, this.difficulties()[color] ?? 'medium') : null;
+      const id = state && roll ? await ludoAiMoveAsync(state, color, roll, this.difficulties()[color] ?? 'medium') : null;
+      if (game !== this.gameId) return; // a new game started while the AI was thinking
       const option = this.ludoEngine.movableOptions().find(o => o.piece.id === id);
       if (option) {
         this.ludoEngine.moveTo(option.piece, option.destination);
